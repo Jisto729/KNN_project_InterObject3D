@@ -1,16 +1,20 @@
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '0' # Had some issues with open3d
+os.environ['OPEN3D_CPU_RENDERING'] = 'true'
 import argparse
 import numpy as np
 import pickle
 import torch
-import os
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import MinkowskiEngine as ME
 
 from examples.minkunet import MinkUNet34C
+from examples.pointnet import MinkowskiPointNetSeg
 import open3d as o3d
 from torch.utils.tensorboard import SummaryWriter
 
+# Change to the correct path to dataset
 read_path = '/media/dora/Samsung_T5/intobjseg/datasets/scannet_official/'
 write_path = '/media/dora/Samsung_T5/intobjseg/datasets/scannet_official/results/'
 
@@ -47,6 +51,7 @@ class RandomLineDataset(Dataset):
         # labelscoords, labelscolors, labelspcd = load_file(config.mask_file_name)
         # pccoords, pccolors, pcpcd = load_file(config.pc_file_name)
         # nccoords, nccolors, ncpcd = load_file(config.nc_file_name)
+
 
 
         scene_name = self.dataset_train[i,0]
@@ -151,14 +156,16 @@ def collation_fn(data_labels):
 
 def main(config):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cpu')
+    #device = torch.device('cpu')
     print(f"Using {device}")
     print(device)
-    #print(torch.cuda.current_device())
-    #print(torch.cuda.get_device_name(0))
-
+    
     # Binary mask generation
-    net = MinkUNet34C(in_channels=5, out_channels=2, D=3).to(device)
+    if config.backbone == "pointnet":
+      net = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
+    else:
+      net = MinkUNet34C(in_channels=5, out_channels=2, D=3).to(device)
+  
     net = net.to(device)
     # If use pre-training weights
     if os.path.exists(config.weights):
@@ -206,7 +213,7 @@ def main(config):
         net.train()
         for i, data in enumerate(train_iter):
             coords, feats, labels = data
-            
+
             input = ME.SparseTensor(feats.float(), coords, device=device)#.to(device)
             out = net(input)
             try:
@@ -214,7 +221,6 @@ def main(config):
                 loss = criterion(out.F.squeeze(), labels.long().to(device))
                 loss.backward(retain_graph=True)
                 optimizer.step()
-                print(out.shape)
             except (RuntimeError, MemoryError) as error:  # Handle OOM
                 print(f'+++ Recovering from exception: {error} +++')
                 torch.cuda.empty_cache()
@@ -294,7 +300,7 @@ def main(config):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', default=10, type=int)
-    parser.add_argument('--max_epochs', default=15, type=int)
+    parser.add_argument('--max_epochs', default=30, type=int)
     parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=1e-4)
@@ -309,6 +315,8 @@ if __name__ == '__main__':
     parser.add_argument('--mask_file_name', type=str, default='/data/scannet_official/masks5x5/scene0191_01/scene0191_01_mask_16.ply')
     parser.add_argument('--pc_file_name', type=str, default='/data/scannet_official/masks5x5/scene0191_01/scene0191_01_mask_16_pc.ply')
     parser.add_argument('--nc_file_name', type=str, default='/data/scannet_official/masks5x5/scene0191_01/scene0191_01_mask_16_nc.ply')
+
+    parser.add_argument('--backbone', default="mink", type=str)
 
     config = parser.parse_args()
     main(config)
