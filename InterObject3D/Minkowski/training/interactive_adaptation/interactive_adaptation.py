@@ -329,6 +329,25 @@ class InteractiveSegmentationModel(object):
         # pred = pred.cpu().numpy()
         return pred, logits
 
+    def confidence(self, logits, pred):
+        probabilities = torch.nn.functional.softmax(logits, dim=1)
+
+
+        # Extract the probability specifically for the Object
+        object_probs = probabilities[:, 1]
+
+        # Isolate ONLY the points the model actually predicted as the object
+        predicted_object_probs = object_probs[pred == 1]
+       
+        # average confidence
+
+        if len(predicted_object_probs) > 0:
+            mask_confidence = predicted_object_probs.mean().item()
+        else:
+            mask_confidence = 0.0
+
+        return mask_confidence
+
     def mean_iou(self, pred, labels):
         intersection = labels * pred
         truepositive = intersection.sum()
@@ -479,17 +498,17 @@ class InteractiveSegmentationModel(object):
             return None, None, -1, None, None
 
         # All distances from foreground points to background points
-        pairwise_distances = torch.cdist(discrete_coords[zero_indices, :], discrete_coords[one_indices, :])
+        pairwise_distances = torch.cdist(discrete_coords[zero_indices.cpu(), :], discrete_coords[one_indices.cpu(), :])
         # Bg points on the border
         pairwise_distances, _ = torch.min(pairwise_distances, dim=0)
         # point furthest from border
         center_id = torch.where(pairwise_distances == torch.max(pairwise_distances, dim=0)[0])
-        center_coo = discrete_coords[one_indices, :][center_id[0][0]]
-        center_label = gt[one_indices][center_id[0][0]]
+        center_coo = discrete_coords[one_indices.cpu(), :][center_id[0][0]]
+        center_label = gt[one_indices.cpu()][center_id[0][0]]
         center_pred = pred[one_indices][center_id[0][0]]
         #print('center_pred', center_pred, center_label)
 
-        candidates = discrete_coords[one_indices, :]
+        candidates = discrete_coords[one_indices.cpu(), :]
         candidates_heat = []
         max_dist = torch.max(pairwise_distances)
 
