@@ -26,7 +26,10 @@ def dataloader(config):
     elif config.dataset == 'apple':
         train_dataset = RandomLineDatasetApple(config)
 
-    instances_id = range(config.instance_counter_id, config.instance_counter_id + config.number_of_instances)
+    if config.all_instances:
+        instances_id = range(0, train_dataset.dataset_size - 1)
+    else:
+        instances_id = range(config.instance_counter_id, config.instance_counter_id + config.number_of_instances)
     subset = torch.utils.data.Subset(train_dataset, instances_id)
     train_dataloader = torch.utils.data.DataLoader(subset, batch_size=1, num_workers=1, shuffle=False)
     return train_dataloader
@@ -81,6 +84,9 @@ def main(_):
         feats_qv = feats[inverse_map]
 
         pred, logits = inseg_model_class.prediction(feats.float(), coords.cpu().numpy(), inseg_global_model, device)
+
+        confidence = inseg_model_class.confidence(logits, pred)
+
         iou = inseg_model_class.mean_iou(pred, labels)
 
         # if sum(labels)<2500:
@@ -99,7 +105,7 @@ def main(_):
             num_clicks = 0
             for n in range(num_clicks + 1, 21):
                 line = str(config.instance_counter_id + i) + ' ' + scene_name + ' ' + object_id + ' ' + str(
-                    n) + ' ' + str(iou.cpu().numpy()) + '\n'
+                    n) + ' ' + str(iou.cpu().numpy()) + ' ' + str(confidence) +'\n'
                 num_clicks += 1
                 if config.save_results_file: f.write(line)
                 if config.verbal:  print('num clicks: ', num_clicks, 'IOU:  ', iou.item(), 'click :', center_coo,
@@ -115,7 +121,7 @@ def main(_):
 
         if config.save_results_file:
             line = str(config.instance_counter_id + i) + ' ' + scene_name + ' ' + object_id + ' ' + str(0) + ' ' + str(
-                iou.cpu().numpy()) + '\n'
+                iou.cpu().numpy()) + ' ' + str(confidence) + '\n'
             f.write(line)
 
         num_clicks = 1
@@ -132,6 +138,8 @@ def main(_):
 
             pred, logits = inseg_model_class.prediction(feats.float(), coords.cpu().numpy(), inseg_global_model, device)
 
+            confidence = inseg_model_class.confidence(logits, pred)
+
             # update prediction with sparse gt
             pos_indices = (feats[:, 3] >= 1)  # positive locations
             neg_indices = (feats[:, 4] >= 1)  # negative locations
@@ -143,7 +151,7 @@ def main(_):
 
             if config.save_results_file:
                 line = str(config.instance_counter_id + i) + ' ' + scene_name + ' ' + object_id + ' ' + str(
-                    num_clicks) + ' ' + str(iou.cpu().numpy()) + '\n'
+                    num_clicks) + ' ' + str(iou.cpu().numpy()) + ' ' + str(confidence) + '\n'
                 f.write(line)
             if config.verbal:  print('num clicks: ', num_clicks, 'IOU: ', iou.item(), 'click :', center_coo, center_gt)
 
@@ -158,7 +166,7 @@ def main(_):
             if center_coo == None:
                 for n in range(num_clicks + 1, 21):
                     line = str(config.instance_counter_id + i) + ' ' + scene_name + ' ' + object_id + ' ' + str(
-                        n) + ' ' + str(iou.cpu().numpy()) + '\n'
+                        n) + ' ' + str(iou.cpu().numpy()) + ' ' + str(confidence) + '\n'
                     if config.save_results_file: f.write(line)
                     if config.verbal: print('num clicks: ', n, 'IOU: ', iou.item(), 'click :', center_coo,
                                              center_gt)
@@ -197,6 +205,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--instance_counter_id', type=int, default=0)
     parser.add_argument('--number_of_instances', type=int, default=1)
+    parser.add_argument('--all_instances', type=bool, default=True)
 
     parser.add_argument('--label', type=str, default=None)
     parser.add_argument('--pretraining_weights', type=str,
