@@ -12,25 +12,29 @@ import random
 import math
 
 FLAGS = flags.FLAGS
-flags.DEFINE_string('path', '/media/dora/Samsung_T5/intobjseg/datasets/scannet_official//scans/', 'Path to 3D scenes')
-flags.DEFINE_string('name', 'scene0000_00', 'Name of the scene.')
-flags.DEFINE_string('output_dir', '/media/dora/Samsung_T5/intobjseg/datasets/scannet_official/results/', 'Where to write generated scenes.')
+flags.DEFINE_string('path', 'example', 'Path to 3D scenes')
+flags.DEFINE_string('name', 'scene0001_01', 'Name of the scene.')
+flags.DEFINE_string('output_dir', 'results', 'Where to write generated scenes.')
 
 def main(_):
 
     #scene_name = 'scene0140_01'
     scene_name = FLAGS.name
 
+
+
     if scene_name[:5] == 'scene':
 
         vertices = read_mesh_vertices_rgb(FLAGS.path + '/' + scene_name + '/' + scene_name + '_vh_clean_2.ply')
         vertices_labels = read_mesh_vertices_rgb(FLAGS.path + '/' + scene_name + '/' + scene_name + '_vh_clean_2.labels.ply')
-        object_id_to_segs, label_to_segs = read_aggregation(FLAGS.path + '/' + scene_name + '/' + scene_name +  '.aggregation.json')
+        object_id_to_segs, label_to_segs, scenes_and_ids, labels = read_aggregation(FLAGS.path + '/' + scene_name + '/' + scene_name +  '.aggregation.json')
         seg_to_verts, num_verts = read_segmentation(FLAGS.path + '/' + scene_name + '/' + scene_name +  '_vh_clean_2.0.010000.segs.json')
+
 
         #Path('/globalwork/celikkan/scannet_official/masks/' + scene_name).mkdir(parents=True, exist_ok=True)
         Path(FLAGS.output_dir +'masks5x5/'+ scene_name).mkdir(parents=True, exist_ok=True)
         Path(FLAGS.output_dir +'crops5x5/'+ scene_name).mkdir(parents=True, exist_ok=True)
+        Path(FLAGS.output_dir +'scenes_&_classes/'+ scene_name).mkdir(parents=True, exist_ok=True)
 
 
         for i in range(len(object_id_to_segs)):
@@ -86,6 +90,15 @@ def main(_):
             output_name = FLAGS.output_dir + 'masks5x5/' + scene_name + '/' + scene_name + '_mask_' + str(i) + '_nc.ply'
             o3d.io.write_point_cloud(output_name, pcd)
 
+
+        scenes_array = np.array(scenes_and_ids, dtype='<U32')
+
+        output_name = FLAGS.output_dir +'scenes_&_classes/'+ scene_name + '/' + scene_name + '_scenes_'
+        np.save(output_name, scenes_array)
+
+        output_name = FLAGS.output_dir +'scenes_&_classes/'+ scene_name + '/' + scene_name + '_classes_' + '.txt'
+        np.savetxt(output_name, labels, fmt='%s')
+
         print('Done ' + scene_name)
 
     else:
@@ -118,6 +131,7 @@ def pyviz3d(scene):
 
 def read_mesh_vertices_rgb(filename):
     """read XYZ and RGB for each vertex."""
+
     assert os.path.isfile(filename)
     with open(filename, "rb") as f:
         plydata = PlyData.read(f)
@@ -147,6 +161,10 @@ def read_aggregation(filename):
     assert os.path.isfile(filename)
     object_id_to_segs = {}
     label_to_segs = {}
+    scenes_and_ids = []
+    labels = []
+    exclude_classes=['wall', 'ceiling', 'floor', 'unlabelled', 'unlabeled']
+
     with open(filename) as f:
         data = json.load(f)
         num_objects = len(data["segGroups"])
@@ -155,11 +173,17 @@ def read_aggregation(filename):
             label = data["segGroups"][i]["label"]
             segs = data["segGroups"][i]["segments"]
             object_id_to_segs[object_id] = segs
+
+            if label not in exclude_classes:
+                scenes_and_ids.append([FLAGS.name, object_id])
+                labels.append(str(label))
             # if label in label_to_segs:
             #     label_to_segs[label].extend(segs)
             # else:
             #     label_to_segs[label] = segs
-    return object_id_to_segs, label_to_segs
+
+
+    return object_id_to_segs, label_to_segs, scenes_and_ids, labels
 
 def read_segmentation(filename):
     assert os.path.isfile(filename)
