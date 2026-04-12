@@ -6,7 +6,9 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score
 
-def generate_scenes():
+
+
+def generate_scenes_scannet():
     PATH_TO_SCANNET_DATASET = '../../datasetgen/example'
     OUTPUT_DIR = '../../datasetgen/results'
 
@@ -24,13 +26,16 @@ def generate_scenes():
 
     print("All directories completed.")
 
-def run_inter():
-    PATH_TO_SCENES_CLASSES = '../../datasetgen/resultsscenes_&_classes/'
-    MASKS = '../../datasetgen/resultsmasks5x5/'
-    CROPS = '../../datasetgen/resultscrops5x5/'
 
-    for folder_name in os.listdir(PATH_TO_SCENES_CLASSES):
-        folder_path = os.path.join(PATH_TO_SCENES_CLASSES, folder_name)
+def run_inter():
+    path_to_scenes = config.path_to_scene
+    masks = config.path_to_mask
+    crops = config.path_to_cops
+    model_used = config.pretraining_weights
+    dataset = config.dataset
+
+    for folder_name in os.listdir(path_to_scenes):
+        folder_path = os.path.join(path_to_scenes, folder_name)
 
         if os.path.isdir(folder_path):
 
@@ -52,10 +57,11 @@ def run_inter():
                 "python", "run_inter3d.py",
                 f"--dataset_classes={classes}",
                 f"--dataset_scenes={scenes}",
-                f"--dataset_folder_scene={CROPS}",
-                f"--dataset_folder_masks={MASKS}",
+                f"--dataset_folder_scene={crops}",
+                f"--dataset_folder_masks={masks}",
                 "--cubeedge=0.05",
-                "--pretraining_weights=weights_exp14_14.pth",
+                f"--dataset={dataset}",
+                f"--pretraining_weights={model_used}",
                 "--dataset=scannet",
                 "--save_results_file=True",
                 f"--results_file_name={results_file_name}"
@@ -137,19 +143,32 @@ def run_stat():
 
     print(results_df.to_markdown(index=False))
 
+    with open(f'results_{config.pretraining_weights}.md', 'w') as f:
+        f.write(results_df.to_markdown(index=False))
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--generate_scenes', type=bool, default=False)
+    parser.add_argument('--generate_scenes_scannet', type=bool, default=False)
+
     parser.add_argument('--run_interaction', type=bool, default=False)
+    parser.add_argument('--path_to_scene', type=str, default='../../datasetgen/resultsscenes_&_classes/')
+    parser.add_argument('--path_to_mask', type=str, default='../../datasetgen/resultsmasks5x5/')
+    parser.add_argument('--path_to_cops', type=str, default='../../datasetgen/resultscrops5x5/')
+    parser.add_argument('--pretraining_weights', type=str, default='weights/weights_exp14_15.pth')
+    parser.add_argument('--dataset', type=str, default='semKITTI')
+
     parser.add_argument('--run_stats', type=bool, default=False)
 
 
+    PATH_TO_SCENES_CLASSES = '../../datasetgen/resultsscenes_&_classes/'
+    MASKS = '../../datasetgen/resultsmasks5x5/'
+    CROPS = '../../datasetgen/resultscrops5x5/'
 
     config = parser.parse_args()
 
-    if config.generate_scenes:
-        generate_scenes()
+    if config.generate_scenes_scannet:
+        generate_scenes_scannet()
 
     if config.run_interaction:
         run_inter()
