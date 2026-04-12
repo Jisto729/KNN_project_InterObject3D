@@ -189,7 +189,7 @@ class MinkowskiPointNetSeg(ME.MinkowskiNetwork):
 
         # Segmentation Head
         self.seg_conv1 = nn.Sequential(
-            ME.MinkowskiLinear(embedding_channel + 64, 512, bias=False),
+            ME.MinkowskiLinear(embedding_channel + 64 + 64 + 64 + 128 + embedding_channel, 512, bias=False),
             ME.MinkowskiBatchNorm(512), 
             ME.MinkowskiReLU(),
         )
@@ -205,16 +205,16 @@ class MinkowskiPointNetSeg(ME.MinkowskiNetwork):
         local_feat = self.conv1(x)  
 
         # Deeper features
-        x = self.conv2(local_feat)  
-        x = self.conv3(x)
-        x = self.conv4(x)  
-        x = self.conv5(x)    
-        global_feat = self.max_pool(x)            
+        local_feat_2 = self.conv2(local_feat)  
+        local_feat_3 = self.conv3(local_feat_2)
+        local_feat_4 = self.conv4(local_feat_3)  
+        local_feat_5 = self.conv5(local_feat_4)    
+        global_feat = self.max_pool(local_feat_5)            
 
         # Concatonating the global feature and the local features
         batch_indices = local_feat.C[:, 0].long()
         global_expanded_feat = global_feat.F[batch_indices]
-        combined_feat = torch.cat([local_feat.F, global_expanded_feat], dim=1)
+        combined_feat = torch.cat([local_feat.F, local_feat_2.F, local_feat_3.F, local_feat_4.F, local_feat_5.F, global_expanded_feat], dim=1)
           
         combined = ME.SparseTensor(
             features=combined_feat,
