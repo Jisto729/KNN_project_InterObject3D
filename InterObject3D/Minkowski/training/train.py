@@ -14,9 +14,12 @@ from examples.pointnet import MinkowskiPointNetSeg
 import open3d as o3d
 from torch.utils.tensorboard import SummaryWriter
 
+import data_preparation.kitti
+
 # Change to the correct path to dataset
-read_path = '/media/dora/Samsung_T5/intobjseg/datasets/scannet_official/'
-write_path = '/media/dora/Samsung_T5/intobjseg/datasets/scannet_official/results/'
+#read_path = '/media/dora/Samsung_T5/intobjseg/datasets/scannet_official/'
+#write_path = '/media/dora/Samsung_T5/intobjseg/datasets/scannet_official/results/'
+write_path = '/mnt/d/downloads/KNN/weights/'
 
 def load_file(file_name):
     pcd = o3d.io.read_point_cloud(file_name)
@@ -162,17 +165,18 @@ def main(config):
     
     # Binary mask generation
     if config.backbone == "pointnet":
-      net = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
+        print("pointnet")
+        net = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
     else:
-      net = MinkUNet34C(in_channels=5, out_channels=2, D=3).to(device)
+        net = MinkUNet34C(in_channels=5, out_channels=2, D=3).to(device)
   
     net = net.to(device)
     # If use pre-training weights
     if os.path.exists(config.weights):
         model_dict = torch.load(config.weights)
-        model_dict['final.bias'] = torch.randn(1, 2, dtype=torch.float32)
-        model_dict['final.kernel'] = torch.randn(96, 2, dtype=torch.float32)
-        model_dict['conv0p1s1.kernel'] = torch.randn(125, 5, 32, dtype=torch.float32)
+        #model_dict['final.bias'] = torch.randn(1, 2, dtype=torch.float32)
+        #model_dict['final.kernel'] = torch.randn(96, 2, dtype=torch.float32)
+        #model_dict['conv0p1s1.kernel'] = torch.randn(125, 5, 32, dtype=torch.float32)
         net.load_state_dict(model_dict)
 
     optimizer = torch.optim.Adam(
@@ -186,7 +190,11 @@ def main(config):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-100)
 
     # Dataset, data loader
-    train_dataset = RandomLineDataset(restrict_training_classes=config.restrict_training_classes)
+    data_preparation.kitti.preprocess_data("/mnt/d/downloads/KNN/data_odometry_velodyne/dataset")
+    if config.dataset == "scannet":
+        train_dataset = RandomLineDataset(restrict_training_classes=config.restrict_training_classes)
+    else:
+        train_dataset = data_preparation.kitti.KittiDataset()
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -197,6 +205,7 @@ def main(config):
         # 3) collate_fn=ME.utils.SparseCollation(),
         collate_fn=ME.utils.batch_sparse_collate,
         num_workers=1)
+
 
     accum_loss, accum_iter, tot_iter = 0, 0, 0
     intersection, mintersection, union = 0, 0, 0
@@ -299,12 +308,12 @@ def main(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch_size', default=10, type=int)
-    parser.add_argument('--max_epochs', default=30, type=int)
+    parser.add_argument('--batch_size', default=5, type=int)
+    parser.add_argument('--max_epochs', default=1000, type=int)
     parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=1e-4)
-    parser.add_argument('--weights', type=str, default='/home/celikkan/Scan2BIM/Minkowski/weights.pth')
+    parser.add_argument('--weights', type=str, default='/mnt/d/downloads/KNN/weights/weights/exp_14_limited_classes/weights_exp14_141.pth')
 
     parser.add_argument('--restrict_training_classes', type=bool, default=True)
 
@@ -317,6 +326,7 @@ if __name__ == '__main__':
     parser.add_argument('--nc_file_name', type=str, default='/data/scannet_official/masks5x5/scene0191_01/scene0191_01_mask_16_nc.ply')
 
     parser.add_argument('--backbone', default="mink", type=str)
+    parser.add_argument('--dataset', default="kitti", type=str)
 
     config = parser.parse_args()
     main(config)

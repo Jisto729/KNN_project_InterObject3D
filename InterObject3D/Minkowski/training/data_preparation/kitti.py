@@ -1,10 +1,12 @@
 import numpy as np
 from torch.utils.data import Dataset
-from utils.directory import parse_directories
-from utils.path_resolver import resolve_path_to_root
-from kitty_clicker import generate_click_channels, KittyClicker
-from kitty_parser import KittyParser
+from data_preparation.utils.directory import parse_directories
+from data_preparation.utils.path_resolver import resolve_path_to_root
+from data_preparation.kitty_clicker import generate_click_channels, KittyClicker
+from data_preparation.kitty_parser import KittyParser
+import glob
 
+import MinkowskiEngine as ME
 
 def preprocess_data(path):
     processed_dir = resolve_path_to_root() / "processed_datasets"
@@ -24,10 +26,10 @@ class KittiDataset(Dataset):
     
     def __init__(self):  
         self.archives = []
-        processed_datasets = parse_directories(resolve_path_to_root()/"processed_datasets")
-        for sequence in processed_datasets:
-            for frame in parse_directories(sequence):
-                self.archives.extend(parse_directories(frame))
+        base_path = resolve_path_to_root()/"processed_datasets"
+        
+        search_pattern = str(base_path / "**" / "*.npz")
+        self.archives = glob.glob(search_pattern, recursive=True)        
 
     def __len__(self):
         return len(self.archives)
