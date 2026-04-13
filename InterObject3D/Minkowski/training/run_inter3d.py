@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import trimesh
 from interactive_adaptation.interactive_adaptation import RandomLineDataset, RandomLineDatasetS3DIS, \
-    RandomLineDatasetSemKITTI, RandomLineDatasetApple
+    RandomLineDatasetSemKITTI, RandomLineDatasetApple, RandomLineDatasetSemKITTINPZ
 
 from interactive_adaptation.interactive_adaptation import InteractiveSegmentationModel
 import pyviz3d.visualizer as viz
@@ -22,7 +22,8 @@ def dataloader(config):
     elif config.dataset == 's3dis':
         train_dataset = RandomLineDatasetS3DIS(config)
     elif config.dataset == 'semKITTI':
-        train_dataset = RandomLineDatasetSemKITTI(config)
+        train_dataset = RandomLineDatasetSemKITTINPZ()
+        # train_dataset = RandomLineDatasetSemKITTI(config)
     elif config.dataset == 'apple':
         train_dataset = RandomLineDatasetApple(config)
 
@@ -221,3 +222,5 @@ if __name__ == '__main__':
     config = parser.parse_args()
 
     main(config)
+
+# python3 run_inter3d.py --dataset=semKITTI --pretraining_weights=weights/weights_exp14_11.pth --save_results_file=True --results_file_name=kitti_test_01 --verbal=True --results_path=./dataset_mini/results/kitti --verbal=False

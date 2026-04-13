@@ -5,7 +5,9 @@ import MinkowskiEngine as ME
 from torch.utils.data import Dataset, DataLoader
 import pickle
 import io
-from examples.minkunet import MinkUNet34C
+from pathlib import Path
+from examples.minkunet import MinkUNet34C, MinkUNet18B
+from examples.pointnet import MinkowskiPointNetSeg
 
 try:
     import open3d as o3d
@@ -198,6 +200,85 @@ class RandomLineDatasetSemKITTI(RandomLineDataset):
         return scene_name, object_id, coords, scenecolors, gtcolors, scenecolors, scenecolors, feats, coords_qv,feats_qv,labels_qv, inverse_map
 
 
+
+###################################### NEW 
+from interactive_adaptation.utils.directory import parse_directories, parse_files
+from interactive_adaptation.utils.path_resolver import resolve_path_to_root
+
+class RandomLineDatasetSemKITTINPZ(Dataset):
+    def __init__(self):  
+        self.archives = []
+        self.quantization_size = 0.05
+
+
+        base_dir = resolve_path_to_root() / "processed_datasets"
+        sequences = parse_directories(base_dir) 
+        
+        for sequence in sequences:
+            frames = parse_directories(sequence) 
+            for frame in frames:
+
+                self.archives.extend(parse_files(frame))
+
+        self.dataset_size = len(self.archives)
+        print(self.dataset_size)
+
+    def __len__(self):
+        return self.dataset_size
+
+    def __getitem__(self, key):
+        try:
+            npz_path = self.archives[key]
+            with np.load(npz_path) as data:
+                coords = data['points']
+                labels = data['labels']
+
+                # if 'T_p' in data and 'T_n' in data:
+                #     T_p = data['T_p']
+                #     T_n = data['T_n']
+                # else:
+
+                #     T_p, T_n = generate_click_channels(coords, labels)
+
+            scenecolors = np.zeros((coords.shape[0], 3))
+
+            T_p = np.zeros(coords.shape[0])
+            T_n = np.zeros(coords.shape[0])
+
+            feats = np.column_stack((scenecolors, T_p, T_n))
+            
+
+            unique_map, inverse_map = ME.utils.sparse_quantize(
+                coordinates=coords,
+                quantization_size=self.quantization_size,
+                return_index=True,
+                ignore_label=-100
+            )
+
+            coords_qv = coords[inverse_map]
+            feats_qv = feats[inverse_map]
+            
+            if labels.ndim > 1 and labels.shape[1] > 1:
+                labels_qv = labels[:, 0][inverse_map]
+            else:
+                labels_qv = labels.reshape(-1)[inverse_map]
+            
+            gtcolors = labels.reshape(-1, 1)
+
+            file_stem = Path(npz_path).stem
+            scene_name = file_stem 
+            object_id = str(key)
+            return (
+                scene_name, object_id, coords, scenecolors, gtcolors, 
+                T_p, T_n, feats, coords_qv, feats_qv, labels_qv, inverse_map
+            )
+
+        except Exception as e:
+            print(f"\n[WARNING] Skipping corrupted file: {self.archives[key]}")
+            print(f"Error details: {e}")
+            random_fallback_index = np.random.randint(0, self.dataset_size)
+            return self.__getitem__(random_fallback_index)
+
 class RandomLineDatasetApple(RandomLineDataset):
     def __init__(self, config, quantization_size=0.05):
 
@@ -267,7 +348,9 @@ class InteractiveSegmentationModel(object):
 
 
     def create_model(self, device, pretrained_weights_file=None):
-        model = MinkUNet34C(in_channels=5, out_channels=2, D=3).to(device)
+        model = MinkUNet18B(in_channels=5, out_channels=2, D=3).to(device)
+        # model = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
+
         if pretrained_weights_file:
             #  Get weights
             weights = pretrained_weights_file

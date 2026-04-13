@@ -75,7 +75,7 @@ def run_inter():
 
 def run_stat():
 
-    result_file_paths = glob.glob("dataset_mini/results/*.csv")
+    result_file_paths = glob.glob(f"dataset_mini/results/{config.dataset_result}/*.csv")
     df_list = [pd.read_csv(f, sep='\s+', header=None, 
                         names=['index', 'scene', 'obj_id', 'click', 'iou', 'confidence']) 
             for f in result_file_paths]
@@ -99,6 +99,9 @@ def run_stat():
         
         iou_scores = click_data['iou']
         conf_scores = click_data['confidence']
+
+
+        miou = iou_scores.mean()
 
         sr25 = (iou_scores > 25.0).mean() * 100
 
@@ -136,14 +139,18 @@ def run_stat():
             'SR@25': f"{sr25:.1f}",
             'mAP': f"{map_score:.1f}",
             'AP@50': f"{ap50:.1f}",
-            'AP@25': f"{ap25:.1f}"
+            'AP@25': f"{ap25:.1f}",
+            "mIoU" : f"{miou:.2f}"
         })
         
     results_df = pd.DataFrame(results)
 
     print(results_df.to_markdown(index=False))
 
-    with open(f'results_{config.pretraining_weights}.md', 'w') as f:
+    model_name = os.path.splitext(os.path.basename(config.pretraining_weights))[0]
+    save_path = f'results/{model_name}.md'
+
+    with open(save_path, 'w') as f:
         f.write(results_df.to_markdown(index=False))
 
 if __name__ == '__main__':
@@ -155,11 +162,11 @@ if __name__ == '__main__':
     parser.add_argument('--path_to_scene', type=str, default='../../datasetgen/resultsscenes_&_classes/')
     parser.add_argument('--path_to_mask', type=str, default='../../datasetgen/resultsmasks5x5/')
     parser.add_argument('--path_to_cops', type=str, default='../../datasetgen/resultscrops5x5/')
-    parser.add_argument('--pretraining_weights', type=str, default='weights/weights_exp14_15.pth')
-    parser.add_argument('--dataset', type=str, default='semKITTI')
+    parser.add_argument('--pretraining_weights', type=str, default='weights/weights_exp14_14_default.pth')
+    parser.add_argument('--dataset', type=str, default='scannet')
 
     parser.add_argument('--run_stats', type=bool, default=False)
-
+    parser.add_argument('--dataset_result', type=str, default='kitti')
 
     PATH_TO_SCENES_CLASSES = '../../datasetgen/resultsscenes_&_classes/'
     MASKS = '../../datasetgen/resultsmasks5x5/'
