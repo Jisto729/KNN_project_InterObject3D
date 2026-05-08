@@ -166,12 +166,12 @@ def main(config):
     # Binary mask generation
     if config.backbone == "pointnet":
         print("pointnet")
-        net = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
+        net = MinkowskiPointNetSeg(in_channel=2, out_channel=2, dimension=3).to(device)
     elif config.backbone == "hpointnet":
         print("hierarchic pointnet")
-        net = HierarchicPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
+        net = HierarchicPointNetSeg(in_channel=2, out_channel=2, dimension=3).to(device)
     else:
-        net = MinkUNet34C(in_channels=5, out_channels=2, D=3).to(device)
+        net = MinkUNet34C(in_channels=2, out_channels=2, D=3).to(device)
   
     net = net.to(device)
     # If use pre-training weights
