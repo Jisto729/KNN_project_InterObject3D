@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 import MinkowskiEngine as ME
 
 from examples.minkunet import MinkUNet34C
-from examples.pointnet import MinkowskiPointNetSeg
+from examples.pointnet import MinkowskiPointNetSeg, HierarchicPointNetSeg
 import open3d as o3d
 from torch.utils.tensorboard import SummaryWriter
 
@@ -167,6 +167,9 @@ def main(config):
     if config.backbone == "pointnet":
         print("pointnet")
         net = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
+    elif config.backbone == "hpointnet":
+        print("hierarchic pointnet")
+        net = HierarchicPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
     else:
         net = MinkUNet34C(in_channels=5, out_channels=2, D=3).to(device)
   

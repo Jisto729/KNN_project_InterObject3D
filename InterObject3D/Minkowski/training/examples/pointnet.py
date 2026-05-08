@@ -189,7 +189,7 @@ class MinkowskiPointNetSeg(ME.MinkowskiNetwork):
 
         # Segmentation Head
         self.seg_conv1 = nn.Sequential(
-            ME.MinkowskiLinear(embedding_channel + 64 + 64 + 64 + 128 + embedding_channel, 512, bias=False),
+            ME.MinkowskiLinear(embedding_channel + 64, 512, bias=False),
             ME.MinkowskiBatchNorm(512), 
             ME.MinkowskiReLU(),
         )
@@ -205,16 +205,16 @@ class MinkowskiPointNetSeg(ME.MinkowskiNetwork):
         local_feat = self.conv1(x)  
 
         # Deeper features
-        local_feat_2 = self.conv2(local_feat)  
-        local_feat_3 = self.conv3(local_feat_2)
-        local_feat_4 = self.conv4(local_feat_3)  
-        local_feat_5 = self.conv5(local_feat_4)    
-        global_feat = self.max_pool(local_feat_5)            
+        x = self.conv2(local_feat)  
+        x = self.conv3(x)
+        x = self.conv4(x)  
+        x = self.conv5(x)    
+        global_feat = self.max_pool(x)            
 
         # Concatonating the global feature and the local features
         batch_indices = local_feat.C[:, 0].long()
         global_expanded_feat = global_feat.F[batch_indices]
-        combined_feat = torch.cat([local_feat.F, local_feat_2.F, local_feat_3.F, local_feat_4.F, local_feat_5.F, global_expanded_feat], dim=1)
+        combined_feat = torch.cat([local_feat.F, global_expanded_feat], dim=1)
           
         combined = ME.SparseTensor(
             features=combined_feat,
@@ -227,6 +227,119 @@ class MinkowskiPointNetSeg(ME.MinkowskiNetwork):
         x = self.seg_conv2(x)
 
         return self.output_linear(x)
+
+# MinkowskiNet implementation of a hierarchic pointnet for segmentation
+class HierarchicPointNetSeg(ME.MinkowskiNetwork):
+    def __init__(self, in_channel, out_channel, dimension=3):
+        ME.MinkowskiNetwork.__init__(self, dimension)
+
+        # Encoder
+        self.conv1 = nn.Sequential(
+            ME.MinkowskiConvolution(in_channel, 64, kernel_size=3, dimension=dimension),
+            ME.MinkowskiLinear(64, 64),
+            ME.MinkowskiReLU()
+        )
+        self.pool1 = ME.MinkowskiConvolution(64, 128, kernel_size=3, stride=2, dimension=dimension)
+
+        self.conv2 = nn.Sequential(
+            ME.MinkowskiConvolution(128, 128, kernel_size=3, dimension=dimension),
+            ME.MinkowskiLinear(128, 128),
+            ME.MinkowskiReLU()
+        )
+        self.pool2 = ME.MinkowskiConvolution(128, 256, kernel_size=3, stride=2, dimension=dimension)
+
+        self.conv3 = nn.Sequential(
+            ME.MinkowskiConvolution(256, 256, kernel_size=3, dimension=dimension),
+            ME.MinkowskiLinear(256, 256),
+            ME.MinkowskiReLU()
+        )
+        self.pool3 = ME.MinkowskiConvolution(256, 512, kernel_size=3, stride=2, dimension=dimension)
+
+        self.conv4 = nn.Sequential(
+            ME.MinkowskiConvolution(512, 512, kernel_size=3, dimension=dimension),
+            ME.MinkowskiLinear(512, 512),
+            ME.MinkowskiReLU()
+        )
+        self.pool4 = ME.MinkowskiConvolution(512, 1024, kernel_size=3, stride=2, dimension=dimension)
+
+        self.global_pool = ME.MinkowskiGlobalMaxPooling()
+
+        # Decoder
+        self.up4 = ME.MinkowskiConvolutionTranspose(1024, 1024, kernel_size=3, stride=2, dimension=dimension)
+        self.cat4 = ME.MinkowskiLinear(1024 + 512, 512)
+
+        self.up3 = ME.MinkowskiConvolutionTranspose(512, 512, kernel_size=3, stride=2, dimension=dimension)
+        self.cat3 = ME.MinkowskiLinear(512 + 256, 256)
+
+        self.up2 = ME.MinkowskiConvolutionTranspose(256, 256, kernel_size=3, stride=2, dimension=dimension)
+        self.cat2 = ME.MinkowskiLinear(256 + 128, 128)
+
+        self.up1 = ME.MinkowskiConvolutionTranspose(128, 128, kernel_size=3, stride=2, dimension=dimension)
+        self.cat1 = ME.MinkowskiLinear(128 + 64, 64)
+
+        # Segmentation Head
+        self.seg_conv1 = nn.Sequential(
+            ME.MinkowskiLinear(embedding_channel + 64, 512, bias=False),
+            ME.MinkowskiBatchNorm(512), 
+            ME.MinkowskiReLU(),
+        )
+        self.seg_conv2 = nn.Sequential(
+            ME.MinkowskiLinear(512, 256, bias=False),
+            ME.MinkowskiBatchNorm(256),
+            ME.MinkowskiReLU(),
+        )
+        self.output_linear = ME.MinkowskiLinear(256, out_channel, bias=True)
+
+    def forward(self, x: ME.SparseTensor):
+        # Downsampling
+        x1 = self.conv1(x)        
+        p1 = self.pool1(x1)
+        
+        x2 = self.conv2(p1)       
+        p2 = self.pool2(x2)
+        
+        x3 = self.conv3(p2)       
+        p3 = self.pool3(x3)
+        
+        x4 = self.conv4(p3)       
+        p4 = self.pool4(x4)       
+
+        # Global features
+        global_feat = self.global_pool(p4)  
+
+        # Upsampling
+        up = self.up4(p4)
+        up = ME.cat(up, x4)
+        up = self.cat4(up)
+        
+        up = self.up3(up)
+        up = ME.cat(up, x3)
+        up = self.cat3(up)
+        
+        up = self.up2(up)
+        up = ME.cat(up, x2)
+        up = self.cat2(up)
+        
+        up = self.up1(up)
+        up = ME.cat(up, x1)
+        up = self.cat1(up)         
+
+        # Concatonating the global feature and the upsampled features
+        batch_indices = up.C[:, 0].long()
+        global_feat_expanded = global_feat.F[batch_indices] 
+        combined_feat = torch.cat([up.F, global_feat_expanded], dim=1) 
+
+        final = ME.SparseTensor(
+            features=combined_feat,
+            coordinate_map_key=up.coordinate_map_key,
+            coordinate_manager=up.coordinate_manager
+        )
+
+        # Segmantation
+        up = self.seg_conv1(final)
+        up = self.seg_conv2(up)
+
+        return self.output_linear(up)
 
 
 class CoordinateTransformation:
