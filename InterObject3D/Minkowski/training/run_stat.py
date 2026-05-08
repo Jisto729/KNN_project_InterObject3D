@@ -182,3 +182,4 @@ if __name__ == '__main__':
 
     if config.run_stats:
         run_stat()
+# python run_stat.py --run_stats=True 

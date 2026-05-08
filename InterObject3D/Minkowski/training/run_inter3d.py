@@ -223,4 +223,6 @@ if __name__ == '__main__':
 
     main(config)
 
-# python3 run_inter3d.py --dataset=semKITTI --pretraining_weights=weights/weights_exp14_11.pth --save_results_file=True --results_file_name=kitti_test_01 --verbal=True --results_path=./dataset_mini/results/kitti --verbal=False
+# python3 run_inter3d.py --dataset=semKITTI --pretraining_weights=weights/weights_exp14_11.pth --save_results_file=True --results_file_name=kitti_test_01 --results_path=./dataset_mini/results/kitti --verbal=False
+
+# python3 run_inter3d.py --dataset=semKITTI --pretraining_weights=weights/weights_exp14_11_pointnet.pth --save_results_file=True --results_file_name=pointnet_kitti_test_01 --results_path=./dataset_mini/results/kitti/

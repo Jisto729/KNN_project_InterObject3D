@@ -1,9 +1,9 @@
 import numpy as np
 from torch.utils.data import Dataset
-from data_preparation.utils.directory import parse_directories
-from data_preparation.utils.path_resolver import resolve_path_to_root
-from data_preparation.kitty_clicker import generate_click_channels, KittyClicker
-from data_preparation.kitty_parser import KittyParser
+from utils.directory import parse_directories
+from utils.path_resolver import resolve_path_to_root
+from kitty_clicker import generate_click_channels, KittyClicker
+from kitty_parser import KittyParser
 import glob
 
 import MinkowskiEngine as ME
@@ -60,3 +60,4 @@ class KittiDataset(Dataset):
 
         return discrete_coords, unique_feats, unique_labels
 
+preprocess_data('./dataset')

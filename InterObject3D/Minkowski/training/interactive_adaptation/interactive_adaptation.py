@@ -348,8 +348,8 @@ class InteractiveSegmentationModel(object):
 
 
     def create_model(self, device, pretrained_weights_file=None):
-        model = MinkUNet18B(in_channels=5, out_channels=2, D=3).to(device)
-        # model = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
+        # model = MinkUNet18B(in_channels=5, out_channels=2, D=3).to(device)
+        model = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
 
         if pretrained_weights_file:
             #  Get weights

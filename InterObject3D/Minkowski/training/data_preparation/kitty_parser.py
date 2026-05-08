@@ -2,8 +2,8 @@ import os
 import concurrent.futures
 import numpy as np
 from pathlib import Path
-from data_preparation.utils.path_resolver import resolve_path_to_root
-from data_preparation.utils.directory import parse_directories, parse_files
+from utils.path_resolver import resolve_path_to_root
+from utils.directory import parse_directories, parse_files
 
 
 class KittyParser:

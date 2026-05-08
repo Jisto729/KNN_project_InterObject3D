@@ -1,8 +1,8 @@
 import numpy as np
 import concurrent
 import os
-from data_preparation.utils.path_resolver import resolve_path_to_root
-from data_preparation.utils.directory import parse_directories, parse_files
+from utils.path_resolver import resolve_path_to_root
+from utils.directory import parse_directories, parse_files
 
 class KittyClicker():
     def __init__(self,processed_path="processed_datasets"):
