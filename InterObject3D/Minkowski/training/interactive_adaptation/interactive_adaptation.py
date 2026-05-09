@@ -215,6 +215,9 @@ class RandomLineDatasetSemKITTINPZ(Dataset):
         self.dataset_size = len(self.archives)
         print(self.dataset_size)
 
+        model_name = getattr(config, 'used_model', getattr(config, 'model_used', ''))
+        self.use_two_channels = (model_name == 'HierarchicPointNetSeg')
+
     def __len__(self):
         return self.dataset_size
 
@@ -232,14 +235,14 @@ class RandomLineDatasetSemKITTINPZ(Dataset):
 
                 #     T_p, T_n = generate_click_channels(coords, labels)
 
-            # scenecolors = np.zeros((coords.shape[0], 3)) # only 2 channels
-
             scenecolors = np.zeros((coords.shape[0], 3))
             T_p = np.zeros(coords.shape[0])
             T_n = np.zeros(coords.shape[0])
 
-            # feats = np.column_stack((scenecolors, T_p, T_n))
-            feats = np.column_stack((T_p, T_n))
+            if self.use_two_channels:
+                feats = np.column_stack((T_p, T_n))  # 2 channels
+            else:
+                feats = np.column_stack((scenecolors, T_p, T_n))  # 5 channels
             
 
             unique_map, inverse_map = ME.utils.sparse_quantize(
@@ -548,9 +551,20 @@ class InteractiveSegmentationModel(object):
         else:return vis.get_picked_points()[0],1
 
     def get_next_click_coo_torch_real_user(self, coords, pred, gt, feats, num_clicks):
+
+
+        ## only 2 channels
+        num_channels = feats.size()[1]
+        if num_channels >= 3:
+            base_colors = feats[:, 0:3].cpu().numpy()
+        else:
+            # 2 channels = no RGB. Create dummy grayscale colors for Open3D
+            base_colors = np.full((feats.shape[0], 3), 0.5)
+
+
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(coords.cpu().numpy())
-        pcd.colors = o3d.utility.Vector3dVector((feats[:, 0:3]).cpu().numpy())
+        pcd.colors = o3d.utility.Vector3dVector(base_colors)
 
         prediction = o3d.geometry.PointCloud()
         pred_rgb = np.zeros(np.shape(coords[:, 0:3].cpu().numpy()))
@@ -563,7 +577,7 @@ class InteractiveSegmentationModel(object):
         else:
             pred_rgb[:, 1] = 255 * (pred.cpu().numpy())
         prediction.points = o3d.utility.Vector3dVector(coords.cpu().numpy())
-        prediction.colors = o3d.utility.Vector3dVector(pred_rgb+(feats[:, 0:3]).cpu().numpy())
+        prediction.colors = o3d.utility.Vector3dVector(pred_rgb + base_colors)
 
 
         picked_point, gt_point = self.pick_points(pcd, prediction)

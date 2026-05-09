@@ -244,6 +244,9 @@ if __name__ == '__main__':
 # MinkUNet18B
 # python3 run_inter3d.py --real_user=True --verbal=True --dataset=kitti --no-all_instances --instance_counter_id=1 --pretraining_weights=weights/weights_exp14_11.pth --used_model=MinkUNet18B --dataset_scenes=data_preparation/processed_datasets/seq00/frame000000
 
+# HierarchicPointNetSeg
+# python3 run_inter3d.py --real_user=True --verbal=True --dataset=kitti --no-all_instances --instance_counter_id=1 --pretraining_weights=weights/weights_exp14_3_pointN.pth --used_model=HierarchicPointNetSeg --dataset_scenes=data_preparation/processed_datasets/seq00/frame000000
+
 #### test 
 # python3 run_inter3d.py --real_user=True --verbal=True --no-all_instances --dataset=scannet --instance_counter_id=4 --pretraining_weights=weights/weights_exp14_11_pointnet.pth --used_model=MinkowskiPointNetSeg --dataset_scenes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_mini.npy --dataset_classes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_classes_mini.txt --dataset_folder_scene=data_preparation/processed_datasets_scannet/crops5x5/ --dataset_folder_masks=data_preparation/processed_datasets_scannet/masks5x5/
 
