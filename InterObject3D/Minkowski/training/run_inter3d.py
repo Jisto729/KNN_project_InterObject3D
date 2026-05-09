@@ -142,11 +142,9 @@ def main(_):
 
         while (num_clicks <= MAX_NUM_CLICKS):
             if center_gt == 1:
-                # if FN add the click to the positive mask
-                feats[:, tp_idx] += new_click_mask[:, 0]
+                feats[:, tp_idx] = (feats[:, tp_idx] + new_click_mask[:, 0]).clamp(0, 1)
             else:
-                # if FP add the click to the negative mask
-                feats[:, tn_idx] += new_click_mask[:, 0]
+                feats[:, tn_idx] = (feats[:, tn_idx] + new_click_mask[:, 0]).clamp(0, 1)
 
             # prediction with the new click
 
