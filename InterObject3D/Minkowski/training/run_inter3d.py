@@ -82,6 +82,15 @@ def main(_):
         gtcolors = data[4][0]
         labels = gtcolors[:, 0].float().long().to(device)
         feats = data[7][0]
+
+        num_channels = feats.size()[1]
+        if num_channels == 5:
+            tp_idx, tn_idx = 3, 4
+        elif num_channels == 2:
+            tp_idx, tn_idx = 0, 1
+        else:
+            raise ValueError(f"Unexpected number of channels: {num_channels}")
+
         coords_qv = data[8]  # [1, num_points, 3]
         labels_qv = data[10]
         inverse_map = data[11]
@@ -121,8 +130,7 @@ def main(_):
             continue
         # expand click region around a cube - increases info
         new_click_mask = inseg_model_class.generate_clickmask_torch(
-            torch.hstack((coords[:, 0:3],
-                          feats[:, 3].unsqueeze_(1) * 255)), center_coo, config.cubeedge)
+                torch.hstack((coords[:, 0:3], feats[:, tp_idx].unsqueeze_(1) * 255)), center_coo, config.cubeedge)
 
 
         if config.save_results_file:
@@ -135,10 +143,10 @@ def main(_):
         while (num_clicks <= MAX_NUM_CLICKS):
             if center_gt == 1:
                 # if FN add the click to the positive mask
-                feats[:, 3] += new_click_mask[:, 0]
+                feats[:, tp_idx] += new_click_mask[:, 0]
             else:
                 # if FP add the click to the negative mask
-                feats[:, 4] += new_click_mask[:, 0]
+                feats[:, tn_idx] += new_click_mask[:, 0]
 
             # prediction with the new click
 
@@ -147,8 +155,8 @@ def main(_):
             confidence = inseg_model_class.confidence(logits, pred)
 
             # update prediction with sparse gt
-            pos_indices = (feats[:, 3] >= 1)  # positive locations
-            neg_indices = (feats[:, 4] >= 1)  # negative locations
+            pos_indices = (feats[:, tp_idx] >= 1)  # positive locations
+            neg_indices = (feats[:, tn_idx] >= 1)  # negative locations
             pred[pos_indices] = 1
             pred[neg_indices] = 0
 
@@ -180,7 +188,7 @@ def main(_):
                 num_clicks = 21
                 continue
             new_click_mask = inseg_model_class.generate_clickmask_torch(
-                torch.hstack((coords[:, 0:3], torch.zeros((num_points, 1)))), center_coo, config.cubeedge)
+                torch.hstack((coords[:, 0:3], feats[:, tp_idx].unsqueeze_(1) * 255)), center_coo, config.cubeedge)
 
             num_clicks += 1
 

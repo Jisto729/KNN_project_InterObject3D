@@ -232,12 +232,14 @@ class RandomLineDatasetSemKITTINPZ(Dataset):
 
                 #     T_p, T_n = generate_click_channels(coords, labels)
 
-            scenecolors = np.zeros((coords.shape[0], 3))
+            # scenecolors = np.zeros((coords.shape[0], 3)) # only 2 channels
 
+            scenecolors = []
             T_p = np.zeros(coords.shape[0])
             T_n = np.zeros(coords.shape[0])
 
-            feats = np.column_stack((scenecolors, T_p, T_n))
+            # feats = np.column_stack((scenecolors, T_p, T_n))
+            feats = np.column_stack((T_p, T_n))
             
 
             unique_map, inverse_map = ME.utils.sparse_quantize(
