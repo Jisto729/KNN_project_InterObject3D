@@ -130,7 +130,7 @@ def main(_):
             continue
         # expand click region around a cube - increases info
         new_click_mask = inseg_model_class.generate_clickmask_torch(
-                torch.hstack((coords[:, 0:3], feats[:, tp_idx].unsqueeze_(1) * 255)), center_coo, config.cubeedge)
+                torch.hstack((coords[:, 0:3], feats[:, tp_idx].unsqueeze(1) * 255)), center_coo, config.cubeedge)
 
 
         if config.save_results_file:
@@ -188,7 +188,7 @@ def main(_):
                 num_clicks = 21
                 continue
             new_click_mask = inseg_model_class.generate_clickmask_torch(
-                torch.hstack((coords[:, 0:3], feats[:, tp_idx].unsqueeze_(1) * 255)), center_coo, config.cubeedge)
+                torch.hstack((coords[:, 0:3], feats[:, tp_idx].unsqueeze(1) * 255)), center_coo, config.cubeedge)
 
             num_clicks += 1
 

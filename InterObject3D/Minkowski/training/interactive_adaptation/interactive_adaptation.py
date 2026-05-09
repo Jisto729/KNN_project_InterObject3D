@@ -234,7 +234,7 @@ class RandomLineDatasetSemKITTINPZ(Dataset):
 
             # scenecolors = np.zeros((coords.shape[0], 3)) # only 2 channels
 
-            scenecolors = []
+            scenecolors = np.zeros((coords.shape[0], 3))
             T_p = np.zeros(coords.shape[0])
             T_n = np.zeros(coords.shape[0])
 
