@@ -5,18 +5,18 @@ import argparse
 import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score
-
+from data_preparation.kitti import preprocess_data
 
 
 def generate_scenes_scannet():
-    PATH_TO_SCANNET_DATASET = '../../datasetgen/example'
-    OUTPUT_DIR = '../../datasetgen/results'
+    PATH_TO_SCANNET_DATASET = 'data_preparation/dataset/scannet'
+    OUTPUT_DIR = 'data_preparation/processed_datasets_scannet/'
 
     for folder_name in os.listdir(PATH_TO_SCANNET_DATASET):
         print(f"Executing script for: {folder_name}")
 
         command = [
-                "python", "../../datasetgen/main_scannet.py",
+                "python", "data_preparation/main_scannet.py",
                 f"--name={folder_name}",
                 f"--path={PATH_TO_SCANNET_DATASET}",
                 f"--output_dir={OUTPUT_DIR}"
@@ -26,12 +26,18 @@ def generate_scenes_scannet():
 
     print("All directories completed.")
 
+def generate_scenes_kitti():
+    PATH_TO_KITTI_DATASET = 'data_preparation/dataset/kitti'
+    preprocess_data(PATH_TO_KITTI_DATASET)
 
-def run_inter():
-    path_to_scenes = config.path_to_scene
-    masks = config.path_to_mask
-    crops = config.path_to_cops
-    model_used = config.pretraining_weights
+
+def run_inter_scannet():
+    
+    path_to_scenes = "data_preparation/processed_datasets_scannet/scenes_&_classes/"
+    masks = "data_preparation/processed_datasets_scannet/masks5x5/"
+    crops = "data_preparation/processed_datasets_scannet/crops5x5/"
+    pretraining_weights = config.pretraining_weights
+    used_model = config.used_model
     dataset = config.dataset
 
     for folder_name in os.listdir(path_to_scenes):
@@ -60,10 +66,11 @@ def run_inter():
                 f"--dataset_folder_scene={crops}",
                 f"--dataset_folder_masks={masks}",
                 "--cubeedge=0.05",
+                f"--used_model={used_model}",
+                f"--pretraining_weights={pretraining_weights}",
                 f"--dataset={dataset}",
-                f"--pretraining_weights={model_used}",
-                "--dataset=scannet",
                 "--save_results_file=True",
+                f"--results_path=./dataset_result/{dataset}/",
                 f"--results_file_name={results_file_name}"
             ]
 
@@ -72,10 +79,42 @@ def run_inter():
 
     print("All directories completed.")
 
+def run_inter_semkitti():
+    seq_num = config.seq_num
+    path_to_scenes = f"data_preparation/processed_datasets/seq{seq_num}"
+    pretraining_weights = config.pretraining_weights
+    used_model = config.used_model
+    dataset = config.dataset
+
+    for folder_name in sorted(os.listdir(path_to_scenes)):
+        folder_path = os.path.join(path_to_scenes, folder_name)
+
+        if not os.path.isdir(folder_path):
+            continue
+
+        results_file_name = folder_name
+        print(f"Executing script for: {results_file_name}")
+
+        command = [
+                "python", "run_inter3d.py",
+                f"--dataset_scenes={folder_path}",  # Pass the whole frame folder
+                "--cubeedge=0.05",
+                f"--used_model={used_model}",
+                f"--pretraining_weights={pretraining_weights}",
+                f"--dataset={dataset}",
+                "--save_results_file=True",
+                f"--results_path=./dataset_result/{dataset}/",
+                f"--results_file_name={results_file_name}"
+            ]
+
+        # check - stop if run_inter3d.py ends with error
+        subprocess.run(command, check=True)
+
+    print("All directories completed.")
 
 def run_stat():
 
-    result_file_paths = glob.glob(f"dataset_mini/results/{config.dataset_result}/*.csv")
+    result_file_paths = glob.glob(f"dataset_result/{config.dataset}/*.csv")
     df_list = [pd.read_csv(f, sep='\s+', header=None, 
                         names=['index', 'scene', 'obj_id', 'click', 'iou', 'confidence']) 
             for f in result_file_paths]
@@ -156,30 +195,40 @@ def run_stat():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--generate_scenes_scannet', type=bool, default=False)
+    parser.add_argument('--generate_scenes_scannet', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--generate_scenes_kitti', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--run_interaction', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--run_stats', action=argparse.BooleanOptionalAction, default=False)
 
-    parser.add_argument('--run_interaction', type=bool, default=False)
-    parser.add_argument('--path_to_scene', type=str, default='../../datasetgen/resultsscenes_&_classes/')
-    parser.add_argument('--path_to_mask', type=str, default='../../datasetgen/resultsmasks5x5/')
-    parser.add_argument('--path_to_cops', type=str, default='../../datasetgen/resultscrops5x5/')
-    parser.add_argument('--pretraining_weights', type=str, default='weights/weights_exp14_14_default.pth')
-    parser.add_argument('--dataset', type=str, default='scannet')
+    ###############
+    parser.add_argument('--pretraining_weights', type=str, default='weights/weights_exp14_11_pointnet.pth')
+    parser.add_argument('--used_model', type=str, default='MinkowskiPointNetSeg') # MinkUNet34C, MinkUNet18B, MinkowskiPointNetSeg
+    parser.add_argument('--dataset', type=str, default='kitti') # scannet, kitti
+    ##############
 
-    parser.add_argument('--run_stats', type=bool, default=False)
-    parser.add_argument('--dataset_result', type=str, default='kitti')
+    ## sequence num for kitti dataset, used with --run_interaction
+    parser.add_argument('--seq_num', type=str, default='00')
 
-    PATH_TO_SCENES_CLASSES = '../../datasetgen/resultsscenes_&_classes/'
-    MASKS = '../../datasetgen/resultsmasks5x5/'
-    CROPS = '../../datasetgen/resultscrops5x5/'
 
     config = parser.parse_args()
 
     if config.generate_scenes_scannet:
         generate_scenes_scannet()
 
+    if config.generate_scenes_kitti:
+        generate_scenes_kitti()
+
     if config.run_interaction:
-        run_inter()
+        if config.dataset == 'scannet':
+            run_inter_scannet()
+        elif config.dataset == 'kitti':
+            run_inter_semkitti()
 
     if config.run_stats:
         run_stat()
-# python run_stat.py --run_stats=True 
+
+
+# python run_stat.py --run_stats
+# python run_stat.py --run_interaction
+
+# python run_stat.py --generate_scenes_scannet

@@ -9,6 +9,9 @@ from pathlib import Path
 from examples.minkunet import MinkUNet34C, MinkUNet18B
 from examples.pointnet import MinkowskiPointNetSeg
 
+import glob
+import os
+
 try:
     import open3d as o3d
 except ImportError:
@@ -202,24 +205,12 @@ class RandomLineDatasetSemKITTI(RandomLineDataset):
 
 
 ###################################### NEW 
-from interactive_adaptation.utils.directory import parse_directories, parse_files
-from interactive_adaptation.utils.path_resolver import resolve_path_to_root
 
 class RandomLineDatasetSemKITTINPZ(Dataset):
-    def __init__(self):  
-        self.archives = []
+    def __init__(self, config):  
+        folder_path = config.dataset_scenes
+        self.archives = sorted(glob.glob(os.path.join(folder_path, '*.npz')))
         self.quantization_size = 0.05
-
-
-        base_dir = resolve_path_to_root() / "processed_datasets"
-        sequences = parse_directories(base_dir) 
-        
-        for sequence in sequences:
-            frames = parse_directories(sequence) 
-            for frame in frames:
-
-                self.archives.extend(parse_files(frame))
-
         self.dataset_size = len(self.archives)
         print(self.dataset_size)
 
@@ -347,9 +338,14 @@ class InteractiveSegmentationModel(object):
         self.pretraining_weights_file = pretraining_weights
 
 
-    def create_model(self, device, pretrained_weights_file=None):
-        # model = MinkUNet18B(in_channels=5, out_channels=2, D=3).to(device)
-        model = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
+    def create_model(self, device, used_model, pretrained_weights_file=None):
+
+        if used_model == 'MinkUNet34C':
+            model = MinkUNet34C(in_channels=5, out_channels=2, D=3).to(device)
+        elif used_model == 'MinkUNet18B':
+            model = MinkUNet18B(in_channels=5, out_channels=2, D=3).to(device)
+        elif used_model == 'MinkowskiPointNetSeg':
+            model = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
 
         if pretrained_weights_file:
             #  Get weights

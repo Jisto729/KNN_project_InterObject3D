@@ -21,14 +21,18 @@ def dataloader(config):
         train_dataset = RandomLineDataset(config)
     elif config.dataset == 's3dis':
         train_dataset = RandomLineDatasetS3DIS(config)
-    elif config.dataset == 'semKITTI':
-        train_dataset = RandomLineDatasetSemKITTINPZ()
+    # elif config.dataset == 'semKITTI':
+    elif config.dataset == 'kitti':
+        train_dataset = RandomLineDatasetSemKITTINPZ(config)
         # train_dataset = RandomLineDatasetSemKITTI(config)
     elif config.dataset == 'apple':
         train_dataset = RandomLineDatasetApple(config)
 
     if config.all_instances:
-        instances_id = range(0, train_dataset.dataset_size - 1)
+        if config.dataset == 'scannet':
+            instances_id = range(0, train_dataset.dataset_size - 1)
+        elif config.dataset == 'kitti':
+            instances_id = range(0, train_dataset.dataset_size)
     else:
         instances_id = range(config.instance_counter_id, config.instance_counter_id + config.number_of_instances)
     subset = torch.utils.data.Subset(train_dataset, instances_id)
@@ -43,7 +47,7 @@ def dataloader(config):
 def get_model(device, trainable=False):
     # Model
     inseg_global = InteractiveSegmentationModel(pretraining_weights=config.pretraining_weights)
-    global_model = inseg_global.create_model(device, inseg_global.pretraining_weights_file)
+    global_model = inseg_global.create_model(device, config.used_model, inseg_global.pretraining_weights_file)
     if not trainable:
         global_model.eval()
     else:
@@ -206,11 +210,13 @@ if __name__ == '__main__':
 
     parser.add_argument('--instance_counter_id', type=int, default=0)
     parser.add_argument('--number_of_instances', type=int, default=1)
-    parser.add_argument('--all_instances', type=bool, default=True)
+    parser.add_argument('--all_instances', action=argparse.BooleanOptionalAction, default=True)
 
     parser.add_argument('--label', type=str, default=None)
     parser.add_argument('--pretraining_weights', type=str,
                         default='/globalwork/celikkan/scannet_official/weights/exp_14/weights_exp14_13.pth')
+
+    parser.add_argument('--used_model', type=str, default='MinkUNet34C') # MinkUNet34C, MinkUNet18B, MinkowskiPointNetSeg
 
     parser.add_argument('--dataset_scenes', type=str,
                         default='./dataset_mini/dataset_scannet_val_mini.npy')
@@ -223,6 +229,9 @@ if __name__ == '__main__':
 
     main(config)
 
-# python3 run_inter3d.py --dataset=semKITTI --pretraining_weights=weights/weights_exp14_11.pth --save_results_file=True --results_file_name=kitti_test_01 --results_path=./dataset_mini/results/kitti --verbal=False
+# python3 run_inter3d.py --real_user=True --verbal=True --dataset=kitti --no-all_instances --instance_counter_id=1 --pretraining_weights=weights/weights_exp14_11_pointnet.pth --used_model=MinkowskiPointNetSeg --dataset_scenes=data_preparation/processed_datasets/seq00/frame000000
 
-# python3 run_inter3d.py --dataset=semKITTI --pretraining_weights=weights/weights_exp14_11_pointnet.pth --save_results_file=True --results_file_name=pointnet_kitti_test_01 --results_path=./dataset_mini/results/kitti/
+#### test 
+# python3 run_inter3d.py --real_user=True --verbal=True --no-all_instances --dataset=scannet --instance_counter_id=4 --pretraining_weights=weights/weights_exp14_11_pointnet.pth --used_model=MinkowskiPointNetSeg --dataset_scenes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_mini.npy --dataset_classes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_classes_mini.txt --dataset_folder_scene=data_preparation/processed_datasets_scannet/crops5x5/ --dataset_folder_masks=data_preparation/processed_datasets_scannet/masks5x5/
+
+# python3 run_inter3d.py --real_user=True --verbal=True --no-all_instances --dataset=scannet --instance_counter_id=4 --pretraining_weights=weights/weights_exp14_14_default.pth --used_model=MinkUNet34C --dataset_scenes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_mini.npy --dataset_classes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_classes_mini.txt --dataset_folder_scene=data_preparation/processed_datasets_scannet/crops5x5/ --dataset_folder_masks=data_preparation/processed_datasets_scannet/masks5x5/

@@ -59,5 +59,3 @@ class KittiDataset(Dataset):
             ignore_label=-100)
 
         return discrete_coords, unique_feats, unique_labels
-
-preprocess_data('./dataset')
