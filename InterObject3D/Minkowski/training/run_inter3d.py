@@ -100,11 +100,12 @@ def main(_):
         print(i)
 
 
-        if config.real_user:
-            center_coo, center_gt = inseg_model_class.get_next_click_coo_torch_real_user(coords, pred, labels, feats, 0)
-        else:
-            center_coo, center_gt, candidates, candidates_heat, fn, fp = inseg_model_class.get_next_simulated_click(
-                pred, labels, coords_qv, labels_qv, inverse_map, inseg_model_class)
+        # if config.real_user:
+        #     center_coo, center_gt = inseg_model_class.get_next_click_coo_torch_real_user(coords, pred, labels, feats, 0)
+        # else:
+        # FORCED SEED: The first click is always simulated so the user has a starting mask.
+        center_coo, center_gt, candidates, candidates_heat, fn, fp = inseg_model_class.get_next_simulated_click(
+            pred, labels, coords_qv, labels_qv, inverse_map, inseg_model_class)
 
         if center_coo == None:
             num_clicks = 0

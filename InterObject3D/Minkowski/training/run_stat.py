@@ -232,3 +232,4 @@ if __name__ == '__main__':
 # python run_stat.py --run_interaction
 
 # python run_stat.py --generate_scenes_scannet
+# python run_stat.py --generate_scenes_kitti
