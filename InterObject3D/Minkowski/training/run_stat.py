@@ -202,7 +202,7 @@ if __name__ == '__main__':
 
     ###############
     parser.add_argument('--pretraining_weights', type=str, default='weights/weights_exp14_11_pointnet.pth')
-    parser.add_argument('--used_model', type=str, default='MinkowskiPointNetSeg') # MinkUNet34C, MinkUNet18B, MinkowskiPointNetSeg
+    parser.add_argument('--used_model', type=str, default='MinkowskiPointNetSeg') # MinkUNet34C, MinkUNet18B, MinkowskiPointNetSeg, HierarchicPointNetSeg
     parser.add_argument('--dataset', type=str, default='kitti') # scannet, kitti
     ##############
 

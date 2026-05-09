@@ -7,7 +7,8 @@ import pickle
 import io
 from pathlib import Path
 from examples.minkunet import MinkUNet34C, MinkUNet18B
-from examples.pointnet import MinkowskiPointNetSeg
+from examples.pointnet import MinkowskiPointNetSeg, HierarchicPointNetSeg
+
 
 import glob
 import os
@@ -346,6 +347,8 @@ class InteractiveSegmentationModel(object):
             model = MinkUNet18B(in_channels=5, out_channels=2, D=3).to(device)
         elif used_model == 'MinkowskiPointNetSeg':
             model = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
+        elif used_model == 'HierarchicPointNetSeg':
+            model = HierarchicPointNetSeg(in_channel=2, out_channel=2, dimension=3).to(device)
 
         if pretrained_weights_file:
             #  Get weights

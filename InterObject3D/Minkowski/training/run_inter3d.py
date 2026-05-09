@@ -217,7 +217,7 @@ if __name__ == '__main__':
     parser.add_argument('--pretraining_weights', type=str,
                         default='/globalwork/celikkan/scannet_official/weights/exp_14/weights_exp14_13.pth')
 
-    parser.add_argument('--used_model', type=str, default='MinkUNet34C') # MinkUNet34C, MinkUNet18B, MinkowskiPointNetSeg
+    parser.add_argument('--used_model', type=str, default='MinkUNet34C') # MinkUNet34C, MinkUNet18B, MinkowskiPointNetSeg, HierarchicPointNetSeg
 
     parser.add_argument('--dataset_scenes', type=str,
                         default='./dataset_mini/dataset_scannet_val_mini.npy')
@@ -230,9 +230,15 @@ if __name__ == '__main__':
 
     main(config)
 
+# pointnet
 # python3 run_inter3d.py --real_user=True --verbal=True --dataset=kitti --no-all_instances --instance_counter_id=1 --pretraining_weights=weights/weights_exp14_11_pointnet.pth --used_model=MinkowskiPointNetSeg --dataset_scenes=data_preparation/processed_datasets/seq00/frame000000
+
+# MinkUNet18B
+# python3 run_inter3d.py --real_user=True --verbal=True --dataset=kitti --no-all_instances --instance_counter_id=1 --pretraining_weights=weights/weights_exp14_11.pth --used_model=MinkUNet18B --dataset_scenes=data_preparation/processed_datasets/seq00/frame000000
 
 #### test 
 # python3 run_inter3d.py --real_user=True --verbal=True --no-all_instances --dataset=scannet --instance_counter_id=4 --pretraining_weights=weights/weights_exp14_11_pointnet.pth --used_model=MinkowskiPointNetSeg --dataset_scenes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_mini.npy --dataset_classes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_classes_mini.txt --dataset_folder_scene=data_preparation/processed_datasets_scannet/crops5x5/ --dataset_folder_masks=data_preparation/processed_datasets_scannet/masks5x5/
 
 # python3 run_inter3d.py --real_user=True --verbal=True --no-all_instances --dataset=scannet --instance_counter_id=4 --pretraining_weights=weights/weights_exp14_14_default.pth --used_model=MinkUNet34C --dataset_scenes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_mini.npy --dataset_classes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_classes_mini.txt --dataset_folder_scene=data_preparation/processed_datasets_scannet/crops5x5/ --dataset_folder_masks=data_preparation/processed_datasets_scannet/masks5x5/
+
+
