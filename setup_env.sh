@@ -66,7 +66,7 @@ echo -e "\n>>> Compiling MinkowskiEngine (MAX_JOBS=4)..."
 MAX_JOBS=4 python setup.py install --blas=openblas --force_cuda
 
 echo -e "\n>>> Installing remaining project dependencies via pip..."
-pip install open3d trimesh numpy tensorboard pyviz3d
+pip install open3d trimesh numpy tensorboard pyviz3d h5py
 
 echo "======================================================="
 echo "  Setup Complete! MinkowskiEngine is ready to run.     "
