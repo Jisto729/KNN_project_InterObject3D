@@ -1,17 +1,30 @@
 # KNN
-* **Link to the dataset:** [data_odometry_velodyne.zip](https://s3.eu-central-1.amazonaws.com/avg-kitti/data_odometry_velodyne.zip)
-* **Link to SemanticKITTI labels:** [data_odometry_labels.zip](https://semantic-kitti.org/assets/data_odometry_labels.zip)
 
-Unpack labels into the dataset, so the structure will be like the following:
+### Installation
 
-![Dataset Structure](pictures/folder_structure.png)
+To setup a virtual environment with everything needed to run this project, you can run the script `setup_env.sh`. If there are some problems with the setup process, this is the installaiton guide from the original InterObject3D article this is based on:
 
-## Start Training
+Preferably install a python virtual env (conda) using the requirements file in the repository or use it as a guideline since the ME engine needs to be installed seperately.
+The code is based on the [Minkowski Engine](https://github.com/NVIDIA/MinkowskiEngine), and the [documentation page](https://nvidia.github.io/MinkowskiEngine/overview.html#installation) contains useful instructions on how to install the Minkowski Engine.
 
+## Training
+
+Run training by running:
 ```bash
-python --dataset "path/to/the/dataset" --backbone "pointnet/hpointnet/hpointnetsmall"
+python train.py
+```
+**Training Parameters:**
+* `--batch_size`: Batch size
+* `--max_epochs`: Max number of epochs
+* `--lr`: Learning rate
+* `--momentum`: Momentum
+* `--weight_decay`: Weight decay
+* `--weights`: Path to weights, if training pre-trained model
+* `--save_weights`: Name of saved weights
+* `--backbone`: The backbone network used for training: `pointnet` for pointnet, `hpointnet` for full hierarchic pointnet, `"hpointnetsmall` for small hierarchic pointnet and anything else for default MinkUNet34C
+* `--dataset`: Path to the raw dataset
 
-``` 
+If there is no processed dataset in `data_preparation/processed_datasets`, the raw dataset on the path `--dataset` is processed there first before training.
 
 ## Start Evaluation
 
@@ -28,7 +41,7 @@ python run_stat.py --generate_scenes_kitti
 
 ``` 
 
-This will create the `processed_datasets` directory.
+This will create the `processed_datasets` directory. For demonstration purposes, one scene is already generated in the `processed_datasets` directory.
 
 ### Running Evaluation on Processed Datasets
 
