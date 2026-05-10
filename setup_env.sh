@@ -57,8 +57,9 @@ export CUDA_HOME=/usr/local/cuda-12.1
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 
-export CC=gcc-12
-export CXX=g++-12
+echo -e "\n>>> Installing Conda C++ Toolchain..."
+mamba install -y -c conda-forge gcc_linux-64 gxx_linux-64 binutils_linux-64
+export CPATH=$CONDA_PREFIX/include:/usr/include/openblas:$CPATH
 
 export TORCH_CUDA_ARCH_LIST="8.6"
 
