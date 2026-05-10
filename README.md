@@ -2,6 +2,8 @@
 
 ### Installation
 
+To setup a virtual environment with everything needed to run this project, you can run the script `setup_env.sh`. If there are some problems with the setup process, this is the installaiton guide from the original InterObject3D article this is based on:
+
 Preferably install a python virtual env (conda) using the requirements file in the repository or use it as a guideline since the ME engine needs to be installed seperately.
 The code is based on the [Minkowski Engine](https://github.com/NVIDIA/MinkowskiEngine), and the [documentation page](https://nvidia.github.io/MinkowskiEngine/overview.html#installation) contains useful instructions on how to install the Minkowski Engine.
 
@@ -39,7 +41,7 @@ python run_stat.py --generate_scenes_kitti
 
 ``` 
 
-This will create the `processed_datasets` directory.
+This will create the `processed_datasets` directory. For demonstration purposes, one scene is already generated in the `processed_datasets` directory.
 
 ### Running Evaluation on Processed Datasets
 
