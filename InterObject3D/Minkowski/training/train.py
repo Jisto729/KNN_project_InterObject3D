@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 import MinkowskiEngine as ME
 
 from examples.minkunet import MinkUNet34C
-from examples.pointnet import MinkowskiPointNetSeg, HierarchicPointNetSeg
+from examples.pointnet import MinkowskiPointNetSeg, HierarchicPointNetSeg, SmallHierarchicPointNetSeg
 import open3d as o3d
 from torch.utils.tensorboard import SummaryWriter
 
@@ -159,17 +159,18 @@ def collation_fn(data_labels):
 
 def main(config):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    #device = torch.device('cpu')
     print(f"Using {device}")
-    print(device)
     
     # Binary mask generation
     if config.backbone == "pointnet":
         print("pointnet")
         net = MinkowskiPointNetSeg(in_channel=2, out_channel=2, dimension=3).to(device)
     elif config.backbone == "hpointnet":
-        print("hierarchic pointnet")
+        print("Hierarchic pointnet")
         net = HierarchicPointNetSeg(in_channel=2, out_channel=2, dimension=3).to(device)
+    elif config.backbone == "hpointnetsmall":
+        print("Small hierarchic pointnet")
+        net = SmallHierarchicPointNetSeg(in_channel=2, out_channel=2, dimension=3).to(device)
     else:
         net = MinkUNet34C(in_channels=2, out_channels=2, D=3).to(device)
   

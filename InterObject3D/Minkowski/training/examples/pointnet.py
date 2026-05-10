@@ -227,13 +227,13 @@ class MinkowskiPointNetSeg(ME.MinkowskiNetwork):
         x = self.seg_conv2(x)
 
         return self.output_linear(x)
-
+    
 # MinkowskiNet implementation of a hierarchic pointnet for segmentation
 class HierarchicPointNetSeg(ME.MinkowskiNetwork):
     def __init__(self, in_channel, out_channel, dimension=3):
         super(HierarchicPointNetSeg, self).__init__(dimension)
 
-        # --- ENCODER ---
+        # Encoder
         self.conv1 = nn.Sequential(
             ME.MinkowskiConvolution(in_channel, 64, kernel_size=3, dimension=dimension),
             ME.MinkowskiLinear(64, 64),
@@ -262,16 +262,16 @@ class HierarchicPointNetSeg(ME.MinkowskiNetwork):
         )
         self.pool4 = ME.MinkowskiConvolution(512, 1024, kernel_size=3, stride=2, dimension=dimension)
 
-        # --- GLOBAL BOTTLENECK ---
+        # Global features
         self.global_pool = ME.MinkowskiGlobalMaxPooling()
-        # Squeeze global feature from 1024 to 256 to maintain feature balance
+        # Making global features smaller so that they don't sway the network that much
         self.global_squeeze = nn.Sequential(
             nn.Linear(1024, 256),
             nn.BatchNorm1d(256),
             nn.ReLU()
         )
 
-        # --- DECODER (Stabilized with BN and ReLU) ---
+        # Decoder
         self.up4 = ME.MinkowskiConvolutionTranspose(1024, 1024, kernel_size=3, stride=2, dimension=dimension)
         self.cat4 = nn.Sequential(
             ME.MinkowskiLinear(1024 + 512, 512),
@@ -300,8 +300,7 @@ class HierarchicPointNetSeg(ME.MinkowskiNetwork):
             ME.MinkowskiReLU()
         )
 
-        # --- SEGMENTATION HEAD ---
-        # 64 (local) + 256 (squeezed global) = 320
+        # Segmentation head
         self.seg_head = nn.Sequential(
             ME.MinkowskiLinear(320, 256, bias=False),
             ME.MinkowskiBatchNorm(256),
@@ -327,7 +326,7 @@ class HierarchicPointNetSeg(ME.MinkowskiNetwork):
         g_raw = self.global_pool(p4)
         g_squeezed = self.global_squeeze(g_raw.F)
 
-        # Decoder with Corrected Skip Pairings
+        # Decoder
         u = self.up4(p4)
         u = ME.cat(u, x4)
         u = self.cat4(u)
@@ -356,7 +355,111 @@ class HierarchicPointNetSeg(ME.MinkowskiNetwork):
         )
 
         return self.seg_head(final)
+    
+# MinkowskiNet implementation of a hierarchic pointnet for segmentation, smaller version
+class SmallHierarchicPointNetSeg(ME.MinkowskiNetwork):
+    def __init__(self, in_channel, out_channel, dimension=3):
+        super(SmallHierarchicPointNetSeg, self).__init__(dimension)
 
+        # Encoder
+        self.conv1 = nn.Sequential(
+            ME.MinkowskiConvolution(in_channel, 32, kernel_size=3, dimension=dimension),
+            ME.MinkowskiLinear(32, 32),
+            ME.MinkowskiReLU()
+        )
+        self.pool1 = ME.MinkowskiConvolution(32, 64, kernel_size=3, stride=2, dimension=dimension)
+
+        self.conv2 = nn.Sequential(
+            ME.MinkowskiConvolution(64, 64, kernel_size=3, dimension=dimension),
+            ME.MinkowskiLinear(64, 64),
+            ME.MinkowskiReLU()
+        )
+        self.pool2 = ME.MinkowskiConvolution(64, 128, kernel_size=3, stride=2, dimension=dimension)
+
+        self.conv3 = nn.Sequential(
+            ME.MinkowskiConvolution(128, 128, kernel_size=3, dimension=dimension),
+            ME.MinkowskiLinear(128, 128),
+            ME.MinkowskiReLU()
+        )
+        self.pool3 = ME.MinkowskiConvolution(128, 256, kernel_size=3, stride=2, dimension=dimension)
+
+        # Global features
+        self.global_pool = ME.MinkowskiGlobalMaxPooling()
+        # Making global features smaller so that they don't sway the network that much
+        self.global_squeeze = nn.Sequential(
+            nn.Linear(256, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU()
+        )
+
+        # Decoder
+        self.up3 = ME.MinkowskiConvolutionTranspose(256, 256, kernel_size=3, stride=2, dimension=dimension)
+        self.cat3 = nn.Sequential(
+            ME.MinkowskiLinear(256 + 128, 128),
+            ME.MinkowskiBatchNorm(128),
+            ME.MinkowskiReLU()
+        )
+
+        self.up2 = ME.MinkowskiConvolutionTranspose(128, 128, kernel_size=3, stride=2, dimension=dimension)
+        self.cat2 = nn.Sequential(
+            ME.MinkowskiLinear(128 + 64, 64),
+            ME.MinkowskiBatchNorm(64),
+            ME.MinkowskiReLU()
+        )
+
+        self.up1 = ME.MinkowskiConvolutionTranspose(64, 64, kernel_size=3, stride=2, dimension=dimension)
+        self.cat1 = nn.Sequential(
+            ME.MinkowskiLinear(64 + 32, 32),
+            ME.MinkowskiBatchNorm(32),
+            ME.MinkowskiReLU()
+        )
+
+        # Segmentation head
+        self.seg_head = nn.Sequential(
+            ME.MinkowskiLinear(32+64, 64, bias=False),
+            ME.MinkowskiBatchNorm(64),
+            ME.MinkowskiReLU(),
+            ME.MinkowskiLinear(64, out_channel)
+        )
+
+    def forward(self, x: ME.SparseTensor):
+        # Encoder
+        x1 = self.conv1(x)
+        p1 = self.pool1(x1)
+        x2 = self.conv2(p1)
+        p2 = self.pool2(x2)
+        x3 = self.conv3(p2)
+        p3 = self.pool3(x3)
+
+        # Global Features
+        g_raw = self.global_pool(p3)
+        g_squeezed = self.global_squeeze(g_raw.F)
+
+        # Decoder
+        u = self.up3(p3)
+        u = ME.cat(u, x3)
+        u = self.cat3(u)
+
+        u = self.up2(u)
+        u = ME.cat(u, x2)
+        u = self.cat2(u)
+
+        u = self.up1(u)
+        u = ME.cat(u, x1)
+        u = self.cat1(u)
+
+        # Global Injection
+        batch_indices = u.C[:, 0].long()
+        g_expanded = g_squeezed[batch_indices]
+        combined_feat = torch.cat([u.F, g_expanded], dim=1)
+
+        final = ME.SparseTensor(
+            features=combined_feat,
+            coordinate_map_key=u.coordinate_map_key,
+            coordinate_manager=u.coordinate_manager
+        )
+
+        return self.seg_head(final)
 
 class CoordinateTransformation:
     def __init__(self, scale_range=(0.9, 1.1), trans=0.25, jitter=0.025, clip=0.05):
