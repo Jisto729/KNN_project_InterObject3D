@@ -7,7 +7,7 @@ import pickle
 import io
 from pathlib import Path
 from examples.minkunet import MinkUNet34C, MinkUNet18B
-from examples.pointnet import MinkowskiPointNetSeg, HierarchicPointNetSeg
+from examples.pointnet import MinkowskiPointNetSeg, HierarchicPointNetSeg, SmallHierarchicPointNetSeg
 
 
 import glob
@@ -216,7 +216,7 @@ class RandomLineDatasetSemKITTINPZ(Dataset):
         print(self.dataset_size)
 
         model_name = getattr(config, 'used_model', getattr(config, 'model_used', ''))
-        self.use_two_channels = (model_name == 'HierarchicPointNetSeg')
+        self.use_two_channels = ((model_name == 'HierarchicPointNetSeg') or model_name == 'SmallHierarchicPointNetSeg')
 
     def __len__(self):
         return self.dataset_size
@@ -354,6 +354,9 @@ class InteractiveSegmentationModel(object):
             model = MinkowskiPointNetSeg(in_channel=5, out_channel=2, dimension=3).to(device)
         elif used_model == 'HierarchicPointNetSeg':
             model = HierarchicPointNetSeg(in_channel=2, out_channel=2, dimension=3).to(device)
+        elif used_model == 'SmallHierarchicPointNetSeg':
+            model = SmallHierarchicPointNetSeg(in_channel=2, out_channel=2, dimension=3).to(device)
+
 
         if pretrained_weights_file:
             #  Get weights

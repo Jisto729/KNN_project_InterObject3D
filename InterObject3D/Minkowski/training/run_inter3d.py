@@ -223,7 +223,7 @@ if __name__ == '__main__':
     parser.add_argument('--pretraining_weights', type=str,
                         default='/globalwork/celikkan/scannet_official/weights/exp_14/weights_exp14_13.pth')
 
-    parser.add_argument('--used_model', type=str, default='MinkUNet34C') # MinkUNet34C, MinkUNet18B, MinkowskiPointNetSeg, HierarchicPointNetSeg
+    parser.add_argument('--used_model', type=str, default='MinkUNet34C') # MinkUNet34C, MinkUNet18B, MinkowskiPointNetSeg, HierarchicPointNetSeg, SmallHierarchicPointNetSeg
 
     parser.add_argument('--dataset_scenes', type=str,
                         default='./dataset_mini/dataset_scannet_val_mini.npy')
