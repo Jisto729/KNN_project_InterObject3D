@@ -6,11 +6,12 @@ Unpack labels into the dataset, so the structure will be like the following:
 
 ![Dataset Structure](pictures/folder_structure.png)
 
-# How to use:
-Call preprocess_data("path to the dataset")
+## Start Training
 
-Then use KittiDataset() as usual
+```bash
+python --dataset "path/to/the/dataset" --backbone "pointnet/hpointnet/hpointnetsmall"
 
+``` 
 
 ## Start Evaluation
 
