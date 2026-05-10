@@ -70,7 +70,7 @@ def main(config):
 
     # Dataset, data loader
     data_preparation.kitti.preprocess_data(
-        "/mnt/d/downloads/KNN/data_odometry_velodyne/dataset"
+        config.dataset
     )
     train_dataset = data_preparation.kitti.KittiDataset()
 
@@ -197,7 +197,8 @@ if __name__ == "__main__":
     parser.add_argument("--save_writer", type=str, default="runs/experiment14")
 
     parser.add_argument("--backbone", default="mink", type=str)
-    parser.add_argument("--dataset", default="kitti", type=str)
+    parser.add_argument("--dataset", type=str, required = True, help='absolute path to the dataset')
+    
 
     config = parser.parse_args()
     main(config)
