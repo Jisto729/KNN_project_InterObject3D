@@ -16,9 +16,8 @@ Then use KittiDataset() as usual
 
 **Note:** The starting directory is considered to be `Minkowski/training`.
 
-The `run_stat.py` script generates modified files from the raw ScanNet or SemanticKITTI datasets. For this to work, you need to place the raw dataset into the corresponding directory:
+The `run_stat.py` script generates modified files from the SemanticKITTI datasets. For this to work, you need to place the raw dataset into the corresponding directory:
 * `data_preparation/dataset/kitti/`
-* `data_preparation/dataset/scannet/`
 
 You can then generate these files by running the following commands:
 
@@ -26,21 +25,19 @@ You can then generate these files by running the following commands:
 # For the KITTI dataset
 python run_stat.py --generate_scenes_kitti
 
-# For the ScanNet dataset
-python run_stat.py --generate_scenes_scannet
 ``` 
 
-This will create the `processed_datasets` and `processed_datasets_scannet` directories.
+This will create the `processed_datasets` directory.
 
 ### Running Evaluation on Processed Datasets
 
-Before starting the evaluation, create the `dataset_result/kitti/` or `dataset_result/scannet/` directories to store the `.csv` evaluation results.
+Before starting the evaluation, create the `dataset_result/kitti/` directory to store the `.csv` evaluation results.
 
 **Evaluation Parameters:**
 You can set these parameters directly in the `run_stat.py` file or add them during command execution:
 * `--pretraining_weights`: Path to the model weights to be used.
 * `--used_model`: Type of model architecture.
-* `--dataset`: The dataset to be evaluated (`kitti` or `scannet`).
+* `--dataset`: The dataset to be evaluated (`kitti`).
 * `--seq_num`: (KITTI only) The specific sequence directory to use for data.
 
 Start the evaluation by running:
@@ -81,19 +78,3 @@ python3 run_inter3d.py \
   --used_model=HierarchicPointNetSeg \
   --dataset_scenes=data_preparation/processed_datasets/seq00/frame000000
   ``` 
-**For the ScanNet dataset:**
-
-```bash
-python3 run_inter3d.py \
-  --real_user=True \
-  --verbal=True \
-  --dataset=scannet \
-  --no-all_instances \
-  --instance_counter_id=4 \
-  --pretraining_weights=weights/weights_exp14_11_pointnet.pth \
-  --used_model=MinkowskiPointNetSeg \
-  --dataset_scenes=data_preparation/processed_datasets_scannet/scenes_&_classes/scene0423_00/dataset_scannet_val_mini.npy \
-  --dataset_classes=data_preparation/processed_datasets_scannet/scenes_&_classes/scene0423_00/dataset_scannet_val_classes_mini.txt \
-  --dataset_folder_scene=data_preparation/processed_datasets_scannet/crops5x5/ \
-  --dataset_folder_masks=data_preparation/processed_datasets_scannet/masks5x5/
-  ```
