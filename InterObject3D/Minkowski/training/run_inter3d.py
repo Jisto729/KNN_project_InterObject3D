@@ -1,53 +1,38 @@
 import argparse
-import numpy as np
 import torch
-import trimesh
-from interactive_adaptation.interactive_adaptation import RandomLineDataset, RandomLineDatasetS3DIS, \
-    RandomLineDatasetSemKITTI, RandomLineDatasetApple, RandomLineDatasetSemKITTINPZ
-
+from interactive_adaptation.interactive_adaptation import RandomLineDatasetSemKITTINPZ
 from interactive_adaptation.interactive_adaptation import InteractiveSegmentationModel
-import pyviz3d.visualizer as viz
-
-try:
-    import open3d as o3d
-except ImportError:
-    raise ImportError('Please install open3d with `pip install open3d`.')
 
 MAX_NUM_CLICKS = 20
-MAX_IOU = 80
+
 
 def dataloader(config):
-    if config.dataset == 'scannet':
-        train_dataset = RandomLineDataset(config)
-    elif config.dataset == 's3dis':
-        train_dataset = RandomLineDatasetS3DIS(config)
-    # elif config.dataset == 'semKITTI':
-    elif config.dataset == 'kitti':
+    if config.dataset == "kitti":
         train_dataset = RandomLineDatasetSemKITTINPZ(config)
-        # train_dataset = RandomLineDatasetSemKITTI(config)
-    elif config.dataset == 'apple':
-        train_dataset = RandomLineDatasetApple(config)
 
     if config.all_instances:
-        if config.dataset == 'scannet':
-            instances_id = range(0, train_dataset.dataset_size - 1)
-        elif config.dataset == 'kitti':
+        if config.dataset == "kitti":
             instances_id = range(0, train_dataset.dataset_size)
     else:
-        instances_id = range(config.instance_counter_id, config.instance_counter_id + config.number_of_instances)
+        instances_id = range(
+            config.instance_counter_id,
+            config.instance_counter_id + config.number_of_instances,
+        )
     subset = torch.utils.data.Subset(train_dataset, instances_id)
-    train_dataloader = torch.utils.data.DataLoader(subset, batch_size=1, num_workers=1, shuffle=False)
+    train_dataloader = torch.utils.data.DataLoader(
+        subset, batch_size=1, num_workers=1, shuffle=False
+    )
     return train_dataloader
-
-
-
-
 
 
 def get_model(device, trainable=False):
     # Model
-    inseg_global = InteractiveSegmentationModel(pretraining_weights=config.pretraining_weights)
-    global_model = inseg_global.create_model(device, config.used_model, inseg_global.pretraining_weights_file)
+    inseg_global = InteractiveSegmentationModel(
+        pretraining_weights=config.pretraining_weights
+    )
+    global_model = inseg_global.create_model(
+        device, config.used_model, inseg_global.pretraining_weights_file
+    )
     if not trainable:
         global_model.eval()
     else:
@@ -56,25 +41,29 @@ def get_model(device, trainable=False):
 
 
 def main(_):
-    device = torch.device('cuda' if (torch.cuda.is_available()) else 'cpu')
+    device = torch.device("cuda" if (torch.cuda.is_available()) else "cpu")
     print(f"Using {device}")
 
     dataloader_test = dataloader(config)
     inseg_model_class, inseg_global_model = get_model(device)
 
     if config.save_results_file:
-        f = open(config.results_path +
-                 config.results_file_name + '_'
-                 + str(config.instance_counter_id) + '_14.csv', 'w')
+        f = open(
+            config.results_path
+            + config.results_file_name
+            + "_"
+            + str(config.instance_counter_id)
+            + "_14.csv",
+            "w",
+        )
 
     for i, data in enumerate(iter(dataloader_test)):
-
         if config.verbal:
-            print('Scene: ', data[0][0], ' object_id:', data[1][0])
+            print("Scene: ", data[0][0], " object_id:", data[1][0])
         if i % 200 == 0:
             if config.save_results_file:
                 f.flush()
-            print(i, 'out of ', config.number_of_instances)
+            print(i, "out of ", config.number_of_instances)
 
         scene_name = data[0][0]
         object_id = data[1][0]
@@ -97,7 +86,9 @@ def main(_):
         num_points = feats.size()[0]
         feats_qv = feats[inverse_map]
 
-        pred, logits = inseg_model_class.prediction(feats.float(), coords.cpu().numpy(), inseg_global_model, device)
+        pred, logits = inseg_model_class.prediction(
+            feats.float(), coords.cpu().numpy(), inseg_global_model, device
+        )
 
         confidence = inseg_model_class.confidence(logits, pred)
 
@@ -105,42 +96,80 @@ def main(_):
 
         # if sum(labels)<2500:
         #    continue
-        if config.verbal: print('IOU: ', iou, sum(labels))
+        if config.verbal:
+            print("IOU: ", iou, sum(labels))
         print(i)
-
 
         # if config.real_user:
         #     center_coo, center_gt = inseg_model_class.get_next_click_coo_torch_real_user(coords, pred, labels, feats, 0)
         # else:
         # FORCED SEED: The first click is always simulated so the user has a starting mask.
-        center_coo, center_gt, candidates, candidates_heat, fn, fp = inseg_model_class.get_next_simulated_click(
-            pred, labels, coords_qv, labels_qv, inverse_map, inseg_model_class)
+        center_coo, center_gt, candidates, candidates_heat, fn, fp = (
+            inseg_model_class.get_next_simulated_click(
+                pred, labels, coords_qv, labels_qv, inverse_map, inseg_model_class
+            )
+        )
 
         if center_coo == None:
             num_clicks = 0
             for n in range(num_clicks + 1, 21):
-                line = str(config.instance_counter_id + i) + ' ' + scene_name + ' ' + object_id + ' ' + str(
-                    n) + ' ' + str(iou.cpu().numpy()) + ' ' + str(confidence) +'\n'
+                line = (
+                    str(config.instance_counter_id + i)
+                    + " "
+                    + scene_name
+                    + " "
+                    + object_id
+                    + " "
+                    + str(n)
+                    + " "
+                    + str(iou.cpu().numpy())
+                    + " "
+                    + str(confidence)
+                    + "\n"
+                )
                 num_clicks += 1
-                if config.save_results_file: f.write(line)
-                if config.verbal:  print('num clicks: ', num_clicks, 'IOU:  ', iou.item(), 'click :', center_coo,
-                                         center_gt)
+                if config.save_results_file:
+                    f.write(line)
+                if config.verbal:
+                    print(
+                        "num clicks: ",
+                        num_clicks,
+                        "IOU:  ",
+                        iou.item(),
+                        "click :",
+                        center_coo,
+                        center_gt,
+                    )
 
             num_clicks = 21
             continue
         # expand click region around a cube - increases info
         new_click_mask = inseg_model_class.generate_clickmask_torch(
-                torch.hstack((coords[:, 0:3], feats[:, tp_idx].unsqueeze(1) * 255)), center_coo, config.cubeedge)
-
+            torch.hstack((coords[:, 0:3], feats[:, tp_idx].unsqueeze(1) * 255)),
+            center_coo,
+            config.cubeedge,
+        )
 
         if config.save_results_file:
-            line = str(config.instance_counter_id + i) + ' ' + scene_name + ' ' + object_id + ' ' + str(0) + ' ' + str(
-                iou.cpu().numpy()) + ' ' + str(confidence) + '\n'
+            line = (
+                str(config.instance_counter_id + i)
+                + " "
+                + scene_name
+                + " "
+                + object_id
+                + " "
+                + str(0)
+                + " "
+                + str(iou.cpu().numpy())
+                + " "
+                + str(confidence)
+                + "\n"
+            )
             f.write(line)
 
         num_clicks = 1
 
-        while (num_clicks <= MAX_NUM_CLICKS):
+        while num_clicks <= MAX_NUM_CLICKS:
             if center_gt == 1:
                 feats[:, tp_idx] = (feats[:, tp_idx] + new_click_mask[:, 0]).clamp(0, 1)
             else:
@@ -148,89 +177,158 @@ def main(_):
 
             # prediction with the new click
 
-            pred, logits = inseg_model_class.prediction(feats.float(), coords.cpu().numpy(), inseg_global_model, device)
+            pred, logits = inseg_model_class.prediction(
+                feats.float(), coords.cpu().numpy(), inseg_global_model, device
+            )
 
             confidence = inseg_model_class.confidence(logits, pred)
 
             # update prediction with sparse gt
-            pos_indices = (feats[:, tp_idx] >= 1)  # positive locations
-            neg_indices = (feats[:, tn_idx] >= 1)  # negative locations
+            pos_indices = feats[:, tp_idx] >= 1  # positive locations
+            neg_indices = feats[:, tn_idx] >= 1  # negative locations
             pred[pos_indices] = 1
             pred[neg_indices] = 0
-
 
             iou = inseg_model_class.mean_iou(pred, labels)
 
             if config.save_results_file:
-                line = str(config.instance_counter_id + i) + ' ' + scene_name + ' ' + object_id + ' ' + str(
-                    num_clicks) + ' ' + str(iou.cpu().numpy()) + ' ' + str(confidence) + '\n'
+                line = (
+                    str(config.instance_counter_id + i)
+                    + " "
+                    + scene_name
+                    + " "
+                    + object_id
+                    + " "
+                    + str(num_clicks)
+                    + " "
+                    + str(iou.cpu().numpy())
+                    + " "
+                    + str(confidence)
+                    + "\n"
+                )
                 f.write(line)
-            if config.verbal:  print('num clicks: ', num_clicks, 'IOU: ', iou.item(), 'click :', center_coo, center_gt)
+            if config.verbal:
+                print(
+                    "num clicks: ",
+                    num_clicks,
+                    "IOU: ",
+                    iou.item(),
+                    "click :",
+                    center_coo,
+                    center_gt,
+                )
 
             if config.real_user:
-                center_coo, center_gt = inseg_model_class.get_next_click_coo_torch_real_user(coords, pred, labels,
-                                                                                             feats, 1)
+                center_coo, center_gt = (
+                    inseg_model_class.get_next_click_coo_torch_real_user(
+                        coords, pred, labels, feats, 1
+                    )
+                )
             else:
-                center_coo, center_gt, candidates, candidates_heat, fn, fp = inseg_model_class.get_next_simulated_click(
-                    pred, labels, coords_qv, labels_qv, inverse_map, inseg_model_class)
-
+                center_coo, center_gt, candidates, candidates_heat, fn, fp = (
+                    inseg_model_class.get_next_simulated_click(
+                        pred,
+                        labels,
+                        coords_qv,
+                        labels_qv,
+                        inverse_map,
+                        inseg_model_class,
+                    )
+                )
 
             if center_coo == None:
                 for n in range(num_clicks + 1, 21):
-                    line = str(config.instance_counter_id + i) + ' ' + scene_name + ' ' + object_id + ' ' + str(
-                        n) + ' ' + str(iou.cpu().numpy()) + ' ' + str(confidence) + '\n'
-                    if config.save_results_file: f.write(line)
-                    if config.verbal: print('num clicks: ', n, 'IOU: ', iou.item(), 'click :', center_coo,
-                                             center_gt)
+                    line = (
+                        str(config.instance_counter_id + i)
+                        + " "
+                        + scene_name
+                        + " "
+                        + object_id
+                        + " "
+                        + str(n)
+                        + " "
+                        + str(iou.cpu().numpy())
+                        + " "
+                        + str(confidence)
+                        + "\n"
+                    )
+                    if config.save_results_file:
+                        f.write(line)
+                    if config.verbal:
+                        print(
+                            "num clicks: ",
+                            n,
+                            "IOU: ",
+                            iou.item(),
+                            "click :",
+                            center_coo,
+                            center_gt,
+                        )
 
                 num_clicks = 21
                 continue
             new_click_mask = inseg_model_class.generate_clickmask_torch(
-                torch.hstack((coords[:, 0:3], feats[:, tp_idx].unsqueeze(1) * 255)), center_coo, config.cubeedge)
+                torch.hstack((coords[:, 0:3], feats[:, tp_idx].unsqueeze(1) * 255)),
+                center_coo,
+                config.cubeedge,
+            )
 
             num_clicks += 1
 
-    if config.save_results_file:f.close()
+    if config.save_results_file:
+        f.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--batch_size', default=1, type=int)
-    parser.add_argument('--max_epochs', default=50, type=int)
-    parser.add_argument('--lr', default=0.001, type=float)
-    parser.add_argument('--momentum', type=float, default=0.9)
-    parser.add_argument('--weight_decay', type=float, default=1e-4)
-    parser.add_argument('--cubeedge', type=float, default=0.1)
+    parser.add_argument("--batch_size", default=1, type=int)
+    parser.add_argument("--max_epochs", default=50, type=int)
+    parser.add_argument("--lr", default=0.001, type=float)
+    parser.add_argument("--momentum", type=float, default=0.9)
+    parser.add_argument("--weight_decay", type=float, default=1e-4)
+    parser.add_argument("--cubeedge", type=float, default=0.1)
 
-    parser.add_argument('--debug', type=bool, default=False)
+    parser.add_argument("--debug", type=bool, default=False)
 
-    parser.add_argument('--verbal', type=bool, default=False)
-    parser.add_argument('--visual', type=bool, default=False)
-    parser.add_argument('--real_user', type=bool, default=False)
-    parser.add_argument('--uncertainty_based', type=bool, default=False)
-    parser.add_argument('--results_path', type=str, default='./dataset_mini/results/')
+    parser.add_argument("--verbal", type=bool, default=False)
+    parser.add_argument("--visual", type=bool, default=False)
+    parser.add_argument("--real_user", type=bool, default=False)
+    parser.add_argument("--uncertainty_based", type=bool, default=False)
+    parser.add_argument("--results_path", type=str, default="./dataset_mini/results/")
 
-    parser.add_argument('--save_results_file', type=bool, default=False)
-    parser.add_argument('--results_file_name', type=str, default=None)
-    parser.add_argument('--dataset', type=str, default='scannet')
+    parser.add_argument("--save_results_file", type=bool, default=False)
+    parser.add_argument("--results_file_name", type=str, default=None)
+    parser.add_argument("--dataset", type=str, default="kitty")
 
-    parser.add_argument('--instance_counter_id', type=int, default=0)
-    parser.add_argument('--number_of_instances', type=int, default=1)
-    parser.add_argument('--all_instances', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--instance_counter_id", type=int, default=0)
+    parser.add_argument("--number_of_instances", type=int, default=1)
+    parser.add_argument(
+        "--all_instances", action=argparse.BooleanOptionalAction, default=True
+    )
 
-    parser.add_argument('--label', type=str, default=None)
-    parser.add_argument('--pretraining_weights', type=str,
-                        default='/globalwork/celikkan/scannet_official/weights/exp_14/weights_exp14_13.pth')
+    parser.add_argument("--label", type=str, default=None)
+    parser.add_argument(
+        "--pretraining_weights",
+        type=str,
+        default="weights/weights_exp14_11_pointnet.pth",
+    )
 
-    parser.add_argument('--used_model', type=str, default='MinkUNet34C') # MinkUNet34C, MinkUNet18B, MinkowskiPointNetSeg, HierarchicPointNetSeg, SmallHierarchicPointNetSeg
+    parser.add_argument(
+        "--used_model", type=str, default="MinkUNet34C"
+    )  # MinkUNet34C, MinkUNet18B, MinkowskiPointNetSeg, HierarchicPointNetSeg, SmallHierarchicPointNetSeg
 
-    parser.add_argument('--dataset_scenes', type=str,
-                        default='./dataset_mini/dataset_scannet_val_mini.npy')
-    parser.add_argument('--dataset_classes', type=str,
-                        default='./dataset_mini/dataset_scannet_val_classes_mini.txt')
-    parser.add_argument('--dataset_folder_scene', type=str, default='./dataset_mini/crops5x5/')
-    parser.add_argument('--dataset_folder_masks', type=str, default='./dataset_mini/masks5x5/')
+    parser.add_argument(
+        "--dataset_scenes",
+        type=str,
+        default="data_preparation/processed_datasets/seq00/frame000000",
+    )
+    parser.add_argument(
+        "--dataset_folder_scene", type=str, default="./dataset_mini/crops5x5/"
+    )
+    parser.add_argument(
+        "--dataset_folder_masks", type=str, default="./dataset_mini/masks5x5/"
+    )
 
     config = parser.parse_args()
 
@@ -245,9 +343,7 @@ if __name__ == '__main__':
 # HierarchicPointNetSeg
 # python3 run_inter3d.py --real_user=True --verbal=True --dataset=kitti --no-all_instances --instance_counter_id=1 --pretraining_weights=weights/weights_exp14_3_pointN.pth --used_model=HierarchicPointNetSeg --dataset_scenes=data_preparation/processed_datasets/seq00/frame000000
 
-#### test 
+#### test
 # python3 run_inter3d.py --real_user=True --verbal=True --no-all_instances --dataset=scannet --instance_counter_id=4 --pretraining_weights=weights/weights_exp14_11_pointnet.pth --used_model=MinkowskiPointNetSeg --dataset_scenes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_mini.npy --dataset_classes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_classes_mini.txt --dataset_folder_scene=data_preparation/processed_datasets_scannet/crops5x5/ --dataset_folder_masks=data_preparation/processed_datasets_scannet/masks5x5/
 
 # python3 run_inter3d.py --real_user=True --verbal=True --no-all_instances --dataset=scannet --instance_counter_id=4 --pretraining_weights=weights/weights_exp14_14_default.pth --used_model=MinkUNet34C --dataset_scenes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_mini.npy --dataset_classes=data_preparation/processed_datasets_scannet/scenes_\&_classes/scene0423_00/dataset_scannet_val_classes_mini.txt --dataset_folder_scene=data_preparation/processed_datasets_scannet/crops5x5/ --dataset_folder_masks=data_preparation/processed_datasets_scannet/masks5x5/
-
-

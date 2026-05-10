@@ -1,6 +1,5 @@
 import numpy as np
 from torch.utils.data import Dataset
-from data_preparation.utils.directory import parse_directories
 from data_preparation.utils.path_resolver import resolve_path_to_root
 from data_preparation.kitty_clicker import generate_click_channels, KittyClicker
 from data_preparation.kitty_parser import KittyParser
@@ -8,28 +7,31 @@ import glob
 
 import MinkowskiEngine as ME
 
+
 def preprocess_data(path):
     processed_dir = resolve_path_to_root() / "processed_datasets"
-    
+
     if not processed_dir.exists():
         processed_dir.mkdir(parents=True, exist_ok=True)
     elif any(processed_dir.iterdir()):
-        print(f"Directory {processed_dir} is already populated. Skipping preprocessing.")
+        print(
+            f"Directory {processed_dir} is already populated. Skipping preprocessing."
+        )
         return
-    
+
     parser = KittyParser(path)
     parser.parse_dataset()
     clicker = KittyClicker()
     clicker.parse_dataset()
 
+
 class KittiDataset(Dataset):
-    
-    def __init__(self):  
+    def __init__(self):
         self.archives = []
-        base_path = resolve_path_to_root()/"processed_datasets"
-        
+        base_path = resolve_path_to_root() / "processed_datasets"
+
         search_pattern = str(base_path / "**" / "*.npz")
-        self.archives = glob.glob(search_pattern, recursive=True)        
+        self.archives = glob.glob(search_pattern, recursive=True)
 
     def __len__(self):
         return len(self.archives)
@@ -37,12 +39,12 @@ class KittiDataset(Dataset):
     def __getitem__(self, key):
         try:
             with np.load(self.archives[key]) as data:
-                points = data['points']
-                labels = data['labels']
+                points = data["points"]
+                labels = data["labels"]
 
-                if 'T_p' in data and 'T_n' in data:
-                    T_p = data['T_p']
-                    T_n = data['T_n']
+                if "T_p" in data and "T_n" in data:
+                    T_p = data["T_p"]
+                    T_n = data["T_n"]
                 else:
                     T_p, T_n = generate_click_channels(points, labels)
         except Exception as e:
@@ -53,9 +55,7 @@ class KittiDataset(Dataset):
 
         feats = np.column_stack((T_p, T_n))
         discrete_coords, unique_feats, unique_labels = ME.utils.sparse_quantize(
-            coordinates=points/0.05,
-            features=feats,
-            labels=labels,
-            ignore_label=-100)
+            coordinates=points / 0.05, features=feats, labels=labels, ignore_label=-100
+        )
 
         return discrete_coords, unique_feats, unique_labels

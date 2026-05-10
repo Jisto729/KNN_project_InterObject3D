@@ -1,6 +1,0 @@
-floor
-chair
-chair
-chair
-chair
-table
